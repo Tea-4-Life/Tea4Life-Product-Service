@@ -1,4 +1,4 @@
-package tea4life.product_service.config;
+package tea4life.product_service.config.database;
 
 import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.util.IdUtil;

@@ -3,7 +3,7 @@ package tea4life.product_service.model.product;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import tea4life.product_service.generator.SnowflakeGenerated;
+import tea4life.product_service.config.database.SnowflakeGenerated;
 import tea4life.product_service.model.base.BaseEntity;
 
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class Product extends BaseEntity {
     Integer inStock;
     @Column(nullable = false)
     String description;
-    @Column(name = "thumbnail_key",nullable = false)
+    @Column(name = "thumbnail_key", nullable = false)
     String thumbnailKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -49,7 +49,7 @@ public class Product extends BaseEntity {
 
     @OneToMany(mappedBy = "product", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @ToString.Exclude
-    List<ProductPrice> productPrices =  new ArrayList<>();
+    List<ProductPrice> productPrices = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @ToString.Exclude

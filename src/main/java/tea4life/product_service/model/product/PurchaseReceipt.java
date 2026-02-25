@@ -3,7 +3,7 @@ package tea4life.product_service.model.product;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import tea4life.product_service.generator.SnowflakeGenerated;
+import tea4life.product_service.config.database.SnowflakeGenerated;
 import tea4life.product_service.model.base.BaseEntity;
 import tea4life.product_service.model.product.constant.ReceiptStatus;
 
@@ -31,14 +31,13 @@ public class PurchaseReceipt extends BaseEntity {
     @SnowflakeGenerated
     Long id;
     BigDecimal total;
-    @Column(name="receipt_status",nullable = false)
+    @Column(name = "receipt_status", nullable = false)
     @Enumerated(EnumType.STRING)
     ReceiptStatus receiptStatus;
 
     @OneToMany(mappedBy = "purchaseReceipt", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @ToString.Exclude
     List<PurchaseReceiptDetail> purchaseReceiptDetails = new ArrayList<>();
-
 
 
 }

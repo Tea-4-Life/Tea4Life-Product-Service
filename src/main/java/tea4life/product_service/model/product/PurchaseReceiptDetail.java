@@ -3,7 +3,7 @@ package tea4life.product_service.model.product;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import tea4life.product_service.generator.SnowflakeGenerated;
+import tea4life.product_service.config.database.SnowflakeGenerated;
 import tea4life.product_service.model.base.BaseEntity;
 
 import java.math.BigDecimal;
@@ -29,9 +29,9 @@ public class PurchaseReceiptDetail extends BaseEntity {
     Long id;
     @Column(nullable = false)
     Long quantity;
-    @Column(name = "unit_price",nullable = false)
+    @Column(name = "unit_price", nullable = false)
     BigDecimal unitPrice;
-    @Column(name = "sub_total",nullable = false)
+    @Column(name = "sub_total", nullable = false)
     BigDecimal subTotal;
 
     @ManyToOne(fetch = FetchType.LAZY)

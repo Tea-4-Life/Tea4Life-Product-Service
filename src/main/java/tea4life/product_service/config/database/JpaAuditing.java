@@ -1,4 +1,4 @@
-package tea4life.product_service.config;
+package tea4life.product_service.config.database;
 
 import java.util.Optional;
 

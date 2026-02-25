@@ -3,7 +3,7 @@ package tea4life.product_service.model.product;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import tea4life.product_service.generator.SnowflakeGenerated;
+import tea4life.product_service.config.database.SnowflakeGenerated;
 import tea4life.product_service.model.base.BaseEntity;
 import tea4life.product_service.model.product.constant.PriceType;
 
