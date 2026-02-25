@@ -1,4 +1,4 @@
-package tea4life.product_service.model.product.constant;
+package tea4life.product_service.model.constant;
 
 /**
  * @author Le Tran Gia Huy

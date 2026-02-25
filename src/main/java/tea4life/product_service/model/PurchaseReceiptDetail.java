@@ -1,4 +1,4 @@
-package tea4life.product_service.model.product;
+package tea4life.product_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;

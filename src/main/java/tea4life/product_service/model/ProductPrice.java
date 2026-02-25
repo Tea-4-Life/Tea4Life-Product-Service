@@ -1,39 +1,44 @@
-package tea4life.product_service.model.product;
+package tea4life.product_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import tea4life.product_service.config.database.SnowflakeGenerated;
 import tea4life.product_service.model.base.BaseEntity;
+import tea4life.product_service.model.constant.PriceType;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.math.BigDecimal;
 
 /**
  * @author Le Tran Gia Huy
- * @created 06/02/2026 - 4:17 PM
+ * @created 06/02/2026 - 4:49 PM
  * @project Tea4Life-Product-Service
  * @package tea4life.product_service.model.product
  */
 
 @Entity
 @Data
-@Table(name = "product_categories")
+@Table(name = "product_prices")
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ProductCategory extends BaseEntity {
+public class ProductPrice extends BaseEntity {
     @Id
     @EqualsAndHashCode.Include
     @SnowflakeGenerated
     Long id;
     @Column(nullable = false)
-    String name;
-    @Column(nullable = false)
-    String description;
+    BigDecimal price;
+    @Column(name = "price_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    PriceType priceType;
 
-    @OneToMany(mappedBy = "productCategory", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @ToString.Exclude
-    List<Product> products = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", nullable = false)
+    Supplier supplier;
 }
