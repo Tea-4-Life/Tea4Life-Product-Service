@@ -1,39 +1,34 @@
 package tea4life.product_service.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import tea4life.product_service.config.database.SnowflakeGenerated;
-import tea4life.product_service.model.base.BaseEntity;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * @author Le Tran Gia Huy
- * @created 06/02/2026 - 4:17 PM
- * @project Tea4Life-Product-Service
- * @package tea4life.product_service.model.product
- */
-
+ * Admin 2/25/2026
+ *
+ **/
 @Entity
-@Data
 @Table(name = "product_categories")
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = true)
+@Getter
+@Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ProductCategory extends BaseEntity {
-    @Id
-    @EqualsAndHashCode.Include
-    @SnowflakeGenerated
-    Long id;
-    @Column(nullable = false)
-    String name;
-    @Column(nullable = false)
-    String description;
+public class ProductCategory {
 
-    @OneToMany(mappedBy = "productCategory", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @ToString.Exclude
-    List<Product> products = new ArrayList<>();
+    @SnowflakeGenerated
+    @Id
+    Long id;
+
+    @Column(unique = true, nullable = false)
+    String name;
+
+    String description;
+    String iconUrl;
+
 }
