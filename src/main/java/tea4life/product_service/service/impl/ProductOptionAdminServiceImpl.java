@@ -92,13 +92,13 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
                 .map(product -> product.getId().toString())
                 .toList();
 
-        return ProductOptionResponse.builder()
-                .id(option.getId() == null ? null : option.getId().toString())
-                .name(option.getName())
-                .isRequired(option.isRequired())
-                .isMultiSelect(option.isMultiSelect())
-                .sortOrder(option.getSortOrder())
-                .productIds(productIds)
-                .build();
+        return new ProductOptionResponse(
+                option.getId() == null ? null : option.getId().toString(),
+                option.getName(),
+                option.isRequired(),
+                option.isMultiSelect(),
+                option.getSortOrder(),
+                productIds
+        );
     }
 }

@@ -50,13 +50,13 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     @Transactional(readOnly = true)
     public ProductOptionValueResponse findValueById(Long productOptionId, Long id) {
         ensureOptionExists(productOptionId);
-        return toResponse(findValueById(productOptionId, id));
+        return toResponse(findValueEntityById(productOptionId, id));
     }
 
     @Override
     public ProductOptionValueResponse updateValue(Long productOptionId, Long id, CreateProductOptionValueRequest request) {
         ensureOptionExists(productOptionId);
-        ProductOptionValue value = findValueById(productOptionId, id);
+        ProductOptionValue value = findValueEntityById(productOptionId, id);
         applyRequestToValue(value, request);
         return toResponse(productOptionValueRepository.save(value));
     }
@@ -64,7 +64,7 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     @Override
     public void deleteValue(Long productOptionId, Long id) {
         ensureOptionExists(productOptionId);
-        ProductOptionValue value = findValueById(productOptionId, id);
+        ProductOptionValue value = findValueEntityById(productOptionId, id);
         productOptionValueRepository.delete(value);
     }
 
@@ -79,7 +79,7 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         }
     }
 
-    private ProductOptionValue findValueById(Long productOptionId, Long id) {
+    private ProductOptionValue findValueEntityById(Long productOptionId, Long id) {
         return productOptionValueRepository.findByIdAndProductOptionId(id, productOptionId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy product option value"));
     }
@@ -91,12 +91,12 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     }
 
     private ProductOptionValueResponse toResponse(ProductOptionValue value) {
-        return ProductOptionValueResponse.builder()
-                .id(value.getId() == null ? null : value.getId().toString())
-                .productOptionId(value.getProductOption() == null ? null : value.getProductOption().getId().toString())
-                .valueName(value.getValueName())
-                .extraPrice(value.getExtraPrice())
-                .sortOrder(value.getSortOrder())
-                .build();
+        return new ProductOptionValueResponse(
+                value.getId() == null ? null : value.getId().toString(),
+                value.getProductOption() == null ? null : value.getProductOption().getId().toString(),
+                value.getValueName(),
+                value.getExtraPrice(),
+                value.getSortOrder()
+        );
     }
 }

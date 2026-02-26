@@ -57,7 +57,7 @@ public class ProductOptionAdminController {
             @PathVariable("id") Long id
     ) {
         productOptionAdminService.deleteOption(id);
-        return ApiResponse.<Void>builder().build();
+        return new ApiResponse<>((Void) null);
     }
 
     @PostMapping("/{productOptionId}/values")
@@ -98,6 +98,6 @@ public class ProductOptionAdminController {
             @PathVariable("id") Long id
     ) {
         productOptionValueAdminService.deleteValue(productOptionId, id);
-        return ApiResponse.<Void>builder().build();
+        return new ApiResponse<>((Void) null);
     }
 }
