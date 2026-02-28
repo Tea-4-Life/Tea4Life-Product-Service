@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,17 +30,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ProductSummaryResponse> findProducts(int page, int size) {
-        int resolvedPage = Math.max(page, 1);
-        int resolvedSize = Math.max(size, 1);
-
-        Pageable pageable = PageRequest.of(
-                resolvedPage - 1,
-                resolvedSize,
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
-
-        Page<ProductSummaryResponse> responsePage = productRepository.findAllBy(pageable)
+    public PageResponse<ProductSummaryResponse> findProducts(Pageable pageable) {
+        Page<@NonNull ProductSummaryResponse> responsePage = productRepository.findAllBy(pageable)
                 .map(this::toSummaryResponse);
 
         return new PageResponse<>(responsePage);
