@@ -7,14 +7,15 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.dto.request.CreateProductOptionRequest;
+import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
 import tea4life.product_service.dto.response.ProductOptionResponse;
-import tea4life.product_service.model.Product;
+import tea4life.product_service.dto.response.ProductOptionValueResponse;
 import tea4life.product_service.model.ProductOption;
+import tea4life.product_service.model.ProductOptionValue;
 import tea4life.product_service.repository.ProductOptionRepository;
-import tea4life.product_service.repository.ProductRepository;
+import tea4life.product_service.repository.ProductOptionValueRepository;
 import tea4life.product_service.service.ProductOptionAdminService;
 
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -24,13 +25,14 @@ import java.util.List;
 public class ProductOptionAdminServiceImpl implements ProductOptionAdminService {
 
     ProductOptionRepository productOptionRepository;
-    ProductRepository productRepository;
+    ProductOptionValueRepository productOptionValueRepository;
 
     @Override
     public ProductOptionResponse createOption(CreateProductOptionRequest request) {
         ProductOption option = new ProductOption();
         applyRequestToOption(option, request);
-        return toResponse(productOptionRepository.save(option));
+        option = productOptionRepository.save(option);
+        return toResponse(option);
     }
 
     @Override
@@ -52,7 +54,8 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
     public ProductOptionResponse updateOption(Long id, CreateProductOptionRequest request) {
         ProductOption option = findOptionByIdInternal(id);
         applyRequestToOption(option, request);
-        return toResponse(productOptionRepository.save(option));
+        option = productOptionRepository.save(option);
+        return toResponse(option);
     }
 
     @Override
@@ -71,38 +74,17 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
         option.setRequired(request.isRequired());
         option.setMultiSelect(request.isMultiSelect());
         option.setSortOrder(request.sortOrder());
-        option.setProducts(resolveProducts(request.productIds()));
-    }
-
-    private List<Product> resolveProducts(List<String> productIds) {
-        if (productIds == null || productIds.isEmpty()) {
-            return Collections.emptyList();
+        if (option.getId() != null) {
+            productOptionValueRepository.deleteAllByProductOptionId(option.getId());
         }
-
-        List<Long> parsedProductIds = productIds.stream()
-                .map(this::parseProductId)
-                .toList();
-
-        List<Product> products = productRepository.findAllById(parsedProductIds);
-        if (products.size() != productIds.size()) {
-            throw new EntityNotFoundException("Một hoặc nhiều productId không tồn tại");
-        }
-        return products;
-    }
-
-    private Long parseProductId(String productId) {
-        try {
-            return Long.parseLong(productId);
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("productId không hợp lệ: " + productId);
-        }
+        option.setProductOptionValues(buildProductOptionValues(option, request.productOptionValues()));
     }
 
     private ProductOptionResponse toResponse(ProductOption option) {
-        List<String> productIds = option.getProducts() == null
+        List<ProductOptionValueResponse> productOptionValues = option.getProductOptionValues() == null
                 ? List.of()
-                : option.getProducts().stream()
-                .map(product -> product.getId().toString())
+                : option.getProductOptionValues().stream()
+                .map(this::toValueResponse)
                 .toList();
 
         return new ProductOptionResponse(
@@ -111,7 +93,37 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
                 option.isRequired(),
                 option.isMultiSelect(),
                 option.getSortOrder(),
-                productIds
+                productOptionValues
+        );
+    }
+
+    private List<ProductOptionValue> buildProductOptionValues(
+            ProductOption option,
+            List<CreateProductOptionValueRequest> requests
+    ) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        return requests.stream()
+                .map(request -> {
+                    ProductOptionValue value = new ProductOptionValue();
+                    value.setProductOption(option);
+                    value.setValueName(request.valueName());
+                    value.setExtraPrice(request.extraPrice());
+                    value.setSortOrder(request.sortOrder());
+                    return value;
+                })
+                .toList();
+    }
+
+    private ProductOptionValueResponse toValueResponse(ProductOptionValue value) {
+        return new ProductOptionValueResponse(
+                value.getId() == null ? null : value.getId().toString(),
+                value.getProductOption() == null ? null : value.getProductOption().getId().toString(),
+                value.getValueName(),
+                value.getExtraPrice(),
+                value.getSortOrder()
         );
     }
 }

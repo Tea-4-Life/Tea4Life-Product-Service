@@ -8,6 +8,6 @@ public record ProductOptionResponse(
         boolean isRequired,
         boolean isMultiSelect,
         Integer sortOrder,
-        List<String> productIds
+        List<ProductOptionValueResponse> productOptionValues
 ) {
 }

@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface ProductOptionValueRepository extends JpaRepository<ProductOptionValue, Long> {
     Page<ProductOptionValue> findAllByProductOptionId(Long productOptionId, Pageable pageable);
 
+    void deleteAllByProductOptionId(Long productOptionId);
+
     Optional<ProductOptionValue> findByIdAndProductOptionId(Long id, Long productOptionId);
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,11 +56,9 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
                 Sort.by(Sort.Direction.ASC, "sortOrder").and(Sort.by(Sort.Direction.ASC, "id"))
         );
 
-        Page<ProductOptionValueResponse> responsePage = productOptionValueRepository
+        Page<@NonNull ProductOptionValueResponse> responsePage = productOptionValueRepository
                 .findAllByProductOptionId(productOptionId, pageable)
-                .map(this::toResponse)
-
-                ;
+                .map(this::toResponse);
 
         return new PageResponse<>(responsePage);
     }

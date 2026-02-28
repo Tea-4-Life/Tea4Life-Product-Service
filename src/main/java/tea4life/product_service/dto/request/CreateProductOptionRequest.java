@@ -15,6 +15,6 @@ public record CreateProductOptionRequest(
         @NotNull(message = "sortOrder không được để trống")
         Integer sortOrder,
 
-        List<String> productIds
+        List<CreateProductOptionValueRequest> productOptionValues
 ) {
 }
