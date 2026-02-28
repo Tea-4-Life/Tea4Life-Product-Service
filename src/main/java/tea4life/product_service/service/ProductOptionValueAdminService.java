@@ -1,16 +1,15 @@
 package tea4life.product_service.service;
 
 import org.springframework.transaction.annotation.Transactional;
+import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
 import tea4life.product_service.dto.response.ProductOptionValueResponse;
-
-import java.util.List;
 
 public interface ProductOptionValueAdminService {
     ProductOptionValueResponse createValue(Long productOptionId, CreateProductOptionValueRequest request);
 
     @Transactional(readOnly = true)
-    List<ProductOptionValueResponse> findAllValues(Long productOptionId);
+    PageResponse<ProductOptionValueResponse> findAllValues(Long productOptionId, int page, int size);
 
     @Transactional(readOnly = true)
     ProductOptionValueResponse findValueById(Long productOptionId, Long id);

@@ -74,15 +74,28 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
         option.setProducts(resolveProducts(request.productIds()));
     }
 
-    private List<Product> resolveProducts(List<Long> productIds) {
+    private List<Product> resolveProducts(List<String> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Product> products = productRepository.findAllById(productIds);
+
+        List<Long> parsedProductIds = productIds.stream()
+                .map(this::parseProductId)
+                .toList();
+
+        List<Product> products = productRepository.findAllById(parsedProductIds);
         if (products.size() != productIds.size()) {
             throw new EntityNotFoundException("Một hoặc nhiều productId không tồn tại");
         }
         return products;
+    }
+
+    private Long parseProductId(String productId) {
+        try {
+            return Long.parseLong(productId);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("productId không hợp lệ: " + productId);
+        }
     }
 
     private ProductOptionResponse toResponse(ProductOption option) {

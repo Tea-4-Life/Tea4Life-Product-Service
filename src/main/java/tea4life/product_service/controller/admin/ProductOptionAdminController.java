@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import org.jspecify.annotations.NonNull;
 import org.springframework.web.bind.annotation.*;
 import tea4life.product_service.dto.base.ApiResponse;
+import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductOptionRequest;
 import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
 import tea4life.product_service.dto.response.ProductOptionResponse;
@@ -69,10 +70,12 @@ public class ProductOptionAdminController {
     }
 
     @GetMapping("/{productOptionId}/values")
-    public ApiResponse<List<ProductOptionValueResponse>> findAllValues(
-            @PathVariable("productOptionId") Long productOptionId
+    public ApiResponse<PageResponse<ProductOptionValueResponse>> findAllValues(
+            @PathVariable("productOptionId") Long productOptionId,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return new ApiResponse<>(productOptionValueAdminService.findAllValues(productOptionId));
+        return new ApiResponse<>(productOptionValueAdminService.findAllValues(productOptionId, page, size));
     }
 
     @GetMapping("/{productOptionId}/values/{id}")

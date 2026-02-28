@@ -4,8 +4,13 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
 import tea4life.product_service.dto.response.ProductOptionValueResponse;
 import tea4life.product_service.model.ProductOption;
@@ -38,12 +43,25 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProductOptionValueResponse> findAllValues(Long productOptionId) {
+    public PageResponse<ProductOptionValueResponse> findAllValues(Long productOptionId, int page, int size) {
         ensureOptionExists(productOptionId);
-        return productOptionValueRepository.findAllByProductOptionIdOrderBySortOrderAsc(productOptionId)
-                .stream()
+
+        int resolvedPage = Math.max(page, 1);
+        int resolvedSize = Math.max(size, 1);
+
+        Pageable pageable = PageRequest.of(
+                resolvedPage - 1,
+                resolvedSize,
+                Sort.by(Sort.Direction.ASC, "sortOrder").and(Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        Page<ProductOptionValueResponse> responsePage = productOptionValueRepository
+                .findAllByProductOptionId(productOptionId, pageable)
                 .map(this::toResponse)
-                .toList();
+
+                ;
+
+        return new PageResponse<>(responsePage);
     }
 
     @Override
