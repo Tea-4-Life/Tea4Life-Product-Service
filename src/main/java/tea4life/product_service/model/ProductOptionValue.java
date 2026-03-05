@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import tea4life.product_service.config.database.SnowflakeGenerated;
+import tea4life.product_service.model.base.BaseEntity;
 
 /**
  * Admin 2/26/2026
@@ -16,7 +17,7 @@ import tea4life.product_service.config.database.SnowflakeGenerated;
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ProductOptionValue {
+public class ProductOptionValue extends BaseEntity {
 
     @Id
     @SnowflakeGenerated
