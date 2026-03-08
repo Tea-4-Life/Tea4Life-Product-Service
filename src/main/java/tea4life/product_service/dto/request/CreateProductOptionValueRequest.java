@@ -4,11 +4,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CreateProductOptionValueRequest(
-        @NotBlank(message = "Tên giá trị option không được để trống")
+        String productOptionId,
+        @NotBlank(message = "Tˆn gi  tr? option kh“ng du?c d? tr?ng")
         String valueName,
-        @NotNull(message = "extraPrice không được để trống")
+        @NotNull(message = "extraPrice kh“ng du?c d? tr?ng")
         Double extraPrice,
-        @NotNull(message = "sortOrder không được để trống")
+        @NotNull(message = "sortOrder kh“ng du?c d? tr?ng")
         Integer sortOrder
 ) {
 }

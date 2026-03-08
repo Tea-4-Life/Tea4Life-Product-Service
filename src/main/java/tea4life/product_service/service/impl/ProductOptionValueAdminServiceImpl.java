@@ -20,8 +20,6 @@ import tea4life.product_service.repository.ProductOptionRepository;
 import tea4life.product_service.repository.ProductOptionValueRepository;
 import tea4life.product_service.service.ProductOptionValueAdminService;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -33,7 +31,8 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
 
     @Override
     public ProductOptionValueResponse createValue(Long productOptionId, CreateProductOptionValueRequest request) {
-        ProductOption option = findOptionById(productOptionId);
+        Long targetProductOptionId = resolveTargetProductOptionId(productOptionId, request.productOptionId());
+        ProductOption option = findOptionById(targetProductOptionId);
 
         ProductOptionValue value = new ProductOptionValue();
         value.setProductOption(option);
@@ -74,6 +73,12 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     public ProductOptionValueResponse updateValue(Long productOptionId, Long id, CreateProductOptionValueRequest request) {
         ensureOptionExists(productOptionId);
         ProductOptionValue value = findValueEntityById(productOptionId, id);
+
+        Long targetProductOptionId = resolveTargetProductOptionId(productOptionId, request.productOptionId());
+        if (!value.getProductOption().getId().equals(targetProductOptionId)) {
+            value.setProductOption(findOptionById(targetProductOptionId));
+        }
+
         applyRequestToValue(value, request);
         return toResponse(productOptionValueRepository.save(value));
     }
@@ -87,24 +92,36 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
 
     private ProductOption findOptionById(Long productOptionId) {
         return productOptionRepository.findById(productOptionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy product option"));
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option"));
     }
 
     private void ensureOptionExists(Long productOptionId) {
         if (!productOptionRepository.existsById(productOptionId)) {
-            throw new EntityNotFoundException("Không tìm thấy product option");
+            throw new EntityNotFoundException("Kh“ng tm th?y product option");
         }
     }
 
     private ProductOptionValue findValueEntityById(Long productOptionId, Long id) {
         return productOptionValueRepository.findByIdAndProductOptionId(id, productOptionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy product option value"));
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
     }
 
     private void applyRequestToValue(ProductOptionValue value, CreateProductOptionValueRequest request) {
         value.setValueName(request.valueName());
         value.setExtraPrice(request.extraPrice());
         value.setSortOrder(request.sortOrder());
+    }
+
+    private Long resolveTargetProductOptionId(Long fallbackProductOptionId, String requestedProductOptionId) {
+        if (requestedProductOptionId == null || requestedProductOptionId.isBlank()) {
+            return fallbackProductOptionId;
+        }
+
+        try {
+            return Long.parseLong(requestedProductOptionId.trim());
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("productOptionId kh“ng h?p l?", ex);
+        }
     }
 
     private ProductOptionValueResponse toResponse(ProductOptionValue value) {
