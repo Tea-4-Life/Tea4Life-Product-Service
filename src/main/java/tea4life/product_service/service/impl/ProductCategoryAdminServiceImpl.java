@@ -4,7 +4,10 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.client.StorageClient;
@@ -30,11 +33,16 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
 
     ProductCategoryRepository productCategoryRepository;
     StorageClient storageClient;
+    KafkaTemplate<String, String> kafkaTemplate;
+
+    @Value("${spring.kafka.topic.storage-delete-file}")
+    @NonFinal
+    String storageDeleteFileTopic;
 
     @Override
     public ProductCategoryResponse createCategory(CreateProductCategoryRequest request) {
         if (productCategoryRepository.existsByNameIgnoreCase(request.name())) {
-            throw new DataIntegrityViolationException("Tên danh mục đã tồn tại");
+            throw new DataIntegrityViolationException("Tˆn danh m?c da t?n t?i");
         }
 
         ProductCategory category = new ProductCategory();
@@ -47,7 +55,7 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
                     new FileMoveRequest(request.iconKey(), destinationPath)
             );
             if (storageResponse.getErrorCode() != null) {
-                throw new RuntimeException("Lỗi di chuyển file: " + storageResponse.getErrorMessage());
+                throw new RuntimeException("L?i di chuy?n file: " + storageResponse.getErrorMessage());
             }
             category.setIconUrl(storageResponse.getData());
             category = productCategoryRepository.save(category);
@@ -77,19 +85,21 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
 
         if (!category.getName().equalsIgnoreCase(request.name())
                 && productCategoryRepository.existsByNameIgnoreCase(request.name())) {
-            throw new DataIntegrityViolationException("Tên danh mục đã tồn tại");
+            throw new DataIntegrityViolationException("Tˆn danh m?c da t?n t?i");
         }
 
         applyRequestToCategory(category, request);
         if (hasText(request.iconKey())) {
+            String oldIconUrl = category.getIconUrl();
             String destinationPath = "products/categories/" + category.getId();
             ApiResponse<String> storageResponse = storageClient.confirmFile(
                     new FileMoveRequest(request.iconKey(), destinationPath)
             );
             if (storageResponse.getErrorCode() != null) {
-                throw new RuntimeException("Lỗi di chuyển file: " + storageResponse.getErrorMessage());
+                throw new RuntimeException("L?i di chuy?n file: " + storageResponse.getErrorMessage());
             }
             category.setIconUrl(storageResponse.getData());
+            publishStorageDelete(oldIconUrl);
         }
         return toResponse(productCategoryRepository.save(category));
     }
@@ -97,12 +107,14 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
     @Override
     public void deleteCategory(Long id) {
         ProductCategory category = findById(id);
+        String iconUrl = category.getIconUrl();
         productCategoryRepository.delete(category);
+        publishStorageDelete(iconUrl);
     }
 
     private ProductCategory findById(Long id) {
         return productCategoryRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục sản phẩm"));
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y danh m?c s?n ph?m"));
     }
 
     private void applyRequestToCategory(ProductCategory category, CreateProductCategoryRequest request) {
@@ -121,5 +133,11 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private void publishStorageDelete(String fileUrl) {
+        if (hasText(fileUrl)) {
+            kafkaTemplate.send(storageDeleteFileTopic, fileUrl);
+        }
     }
 }
