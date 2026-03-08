@@ -16,7 +16,9 @@ import tea4life.product_service.repository.ProductOptionRepository;
 import tea4life.product_service.repository.ProductOptionValueRepository;
 import tea4life.product_service.service.ProductOptionAdminService;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -66,7 +68,7 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
 
     private ProductOption findOptionByIdInternal(Long id) {
         return productOptionRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy product option"));
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option"));
     }
 
     private void applyRequestToOption(ProductOption option, CreateProductOptionRequest request) {
@@ -102,7 +104,7 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
             List<CreateProductOptionValueRequest> requests
     ) {
         if (requests == null || requests.isEmpty()) {
-            return List.of();
+            return new ArrayList<>();
         }
 
         return requests.stream()
@@ -114,7 +116,7 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
                     value.setSortOrder(request.sortOrder());
                     return value;
                 })
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private ProductOptionValueResponse toValueResponse(ProductOptionValue value) {
