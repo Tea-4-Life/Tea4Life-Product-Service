@@ -72,7 +72,8 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     @Override
     public ProductOptionValueResponse updateValue(Long productOptionId, Long id, CreateProductOptionValueRequest request) {
         ensureOptionExists(productOptionId);
-        ProductOptionValue value = findValueEntityById(productOptionId, id);
+        ProductOptionValue value = productOptionValueRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
 
         Long targetProductOptionId = resolveTargetProductOptionId(productOptionId, request.productOptionId());
         if (!value.getProductOption().getId().equals(targetProductOptionId)) {
@@ -86,7 +87,8 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     @Override
     public void deleteValue(Long productOptionId, Long id) {
         ensureOptionExists(productOptionId);
-        ProductOptionValue value = findValueEntityById(productOptionId, id);
+        ProductOptionValue value = productOptionValueRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
         productOptionValueRepository.delete(value);
     }
 
@@ -134,3 +136,4 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         );
     }
 }
+
