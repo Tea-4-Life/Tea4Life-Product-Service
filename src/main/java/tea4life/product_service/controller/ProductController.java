@@ -8,11 +8,10 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
-import tea4life.product_service.dto.response.ProductResponse;
+import tea4life.product_service.dto.response.ProductDetailResponse;
 import tea4life.product_service.dto.response.ProductSummaryResponse;
 import tea4life.product_service.service.ProductService;
 
@@ -32,7 +31,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<ProductResponse> findProductById(
+    public ApiResponse<ProductDetailResponse> findProductById(
             @PathVariable("id") Long id
     ) {
         return new ApiResponse<>(productService.findProductById(id));
