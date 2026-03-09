@@ -5,6 +5,7 @@ public record ProductOptionValueResponse(
         String productOptionId,
         String valueName,
         Double extraPrice,
-        Integer sortOrder
+        Integer sortOrder,
+        String imageUrl
 ) {
 }

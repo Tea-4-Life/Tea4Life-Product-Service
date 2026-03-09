@@ -125,7 +125,8 @@ public class ProductOptionAdminServiceImpl implements ProductOptionAdminService 
                 value.getProductOption() == null ? null : value.getProductOption().getId().toString(),
                 value.getValueName(),
                 value.getExtraPrice(),
-                value.getSortOrder()
+                value.getSortOrder(),
+                value.getImageUrl()
         );
     }
 }

@@ -36,4 +36,7 @@ public class ProductOptionValue extends BaseEntity {
     @Column(name = "sort_order", nullable = false)
     Integer sortOrder = 0;
 
+    @Column
+    String imageUrl;
+
 }

@@ -4,15 +4,21 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tea4life.product_service.client.StorageClient;
+import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
+import tea4life.product_service.dto.request.FileMoveRequest;
 import tea4life.product_service.dto.response.ProductOptionValueResponse;
 import tea4life.product_service.model.ProductOption;
 import tea4life.product_service.model.ProductOptionValue;
@@ -28,6 +34,12 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
 
     ProductOptionRepository productOptionRepository;
     ProductOptionValueRepository productOptionValueRepository;
+    StorageClient storageClient;
+    KafkaTemplate<String, String> kafkaTemplate;
+
+    @Value("${spring.kafka.topic.storage-delete-file}")
+    @NonFinal
+    String storageDeleteFileTopic;
 
     @Override
     public ProductOptionValueResponse createValue(Long productOptionId, CreateProductOptionValueRequest request) {
@@ -38,7 +50,10 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         value.setProductOption(option);
         applyRequestToValue(value, request);
 
-        return toResponse(productOptionValueRepository.save(value));
+        ProductOptionValue savedValue = productOptionValueRepository.save(value);
+        confirmImageIfNeeded(savedValue, request.imageKey());
+
+        return toResponse(productOptionValueRepository.save(savedValue));
     }
 
     @Override
@@ -73,39 +88,51 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
     public ProductOptionValueResponse updateValue(Long productOptionId, Long id, CreateProductOptionValueRequest request) {
         ensureOptionExists(productOptionId);
         ProductOptionValue value = productOptionValueRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
+                .orElseThrow(() -> new EntityNotFoundException("Product option value not found"));
 
         Long targetProductOptionId = resolveTargetProductOptionId(productOptionId, request.productOptionId());
         if (!value.getProductOption().getId().equals(targetProductOptionId)) {
             value.setProductOption(findOptionById(targetProductOptionId));
         }
 
+        String oldImageUrl = value.getImageUrl();
         applyRequestToValue(value, request);
-        return toResponse(productOptionValueRepository.save(value));
+
+        ProductOptionValue savedValue = productOptionValueRepository.save(value);
+        confirmImageIfNeeded(savedValue, request.imageKey());
+
+        ProductOptionValue refreshedValue = productOptionValueRepository.save(savedValue);
+        if (hasText(request.imageKey()) && hasText(oldImageUrl) && !oldImageUrl.equals(refreshedValue.getImageUrl())) {
+            publishStorageDelete(oldImageUrl);
+        }
+
+        return toResponse(refreshedValue);
     }
 
     @Override
     public void deleteValue(Long productOptionId, Long id) {
         ensureOptionExists(productOptionId);
         ProductOptionValue value = productOptionValueRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
+                .orElseThrow(() -> new EntityNotFoundException("Product option value not found"));
+        String imageUrl = value.getImageUrl();
         productOptionValueRepository.delete(value);
+        publishStorageDelete(imageUrl);
     }
 
     private ProductOption findOptionById(Long productOptionId) {
         return productOptionRepository.findById(productOptionId)
-                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option"));
+                .orElseThrow(() -> new EntityNotFoundException("Product option not found"));
     }
 
     private void ensureOptionExists(Long productOptionId) {
         if (!productOptionRepository.existsById(productOptionId)) {
-            throw new EntityNotFoundException("Kh“ng tm th?y product option");
+            throw new EntityNotFoundException("Product option not found");
         }
     }
 
     private ProductOptionValue findValueEntityById(Long productOptionId, Long id) {
         return productOptionValueRepository.findByIdAndProductOptionId(id, productOptionId)
-                .orElseThrow(() -> new EntityNotFoundException("Kh“ng tm th?y product option value"));
+                .orElseThrow(() -> new EntityNotFoundException("Product option value not found"));
     }
 
     private void applyRequestToValue(ProductOptionValue value, CreateProductOptionValueRequest request) {
@@ -114,16 +141,38 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         value.setSortOrder(request.sortOrder());
     }
 
+    private void confirmImageIfNeeded(ProductOptionValue value, String imageKey) {
+        if (!hasText(imageKey) || value.getId() == null) {
+            return;
+        }
+
+        String destinationPath = "products/options/values/" + value.getId();
+        ApiResponse<String> storageResponse = storageClient.confirmFile(
+                new FileMoveRequest(imageKey, destinationPath)
+        );
+        value.setImageUrl(storageResponse.getData());
+    }
+
     private Long resolveTargetProductOptionId(Long fallbackProductOptionId, String requestedProductOptionId) {
-        if (requestedProductOptionId == null || requestedProductOptionId.isBlank()) {
+        if (!hasText(requestedProductOptionId)) {
             return fallbackProductOptionId;
         }
 
         try {
             return Long.parseLong(requestedProductOptionId.trim());
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("productOptionId kh“ng h?p l?", ex);
+            throw new IllegalArgumentException("Invalid productOptionId", ex);
         }
+    }
+
+    private void publishStorageDelete(String fileUrl) {
+        if (hasText(fileUrl)) {
+            kafkaTemplate.send(storageDeleteFileTopic, fileUrl);
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private ProductOptionValueResponse toResponse(ProductOptionValue value) {
@@ -132,8 +181,8 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
                 value.getProductOption() == null ? null : value.getProductOption().getId().toString(),
                 value.getValueName(),
                 value.getExtraPrice(),
-                value.getSortOrder()
+                value.getSortOrder(),
+                value.getImageUrl()
         );
     }
 }
-

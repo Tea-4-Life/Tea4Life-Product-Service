@@ -112,7 +112,8 @@ public class ProductServiceImpl implements ProductService {
                 value.getProductOption().getId().toString(),
                 value.getValueName(),
                 value.getExtraPrice(),
-                value.getSortOrder()
+                value.getSortOrder(),
+                value.getImageUrl()
         );
     }
 }
