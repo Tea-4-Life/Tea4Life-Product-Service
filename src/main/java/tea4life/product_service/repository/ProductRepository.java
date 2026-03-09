@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import tea4life.product_service.model.Product;
 
 import java.util.Optional;
@@ -11,6 +13,23 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"productCategory", "productOptions"})
     Page<Product> findAllBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"productCategory", "productOptions"})
+    @Query("""
+            select p
+            from Product p
+            where (:keyword is null or lower(p.name) like lower(concat('%', :keyword, '%')))
+              and (:categoryId is null or p.productCategory.id = :categoryId)
+              and (:minPrice is null or p.basePrice >= :minPrice)
+              and (:maxPrice is null or p.basePrice <= :maxPrice)
+            """)
+    Page<Product> findAllByFilters(
+            @Param("keyword") String keyword,
+            @Param("categoryId") Long categoryId,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            Pageable pageable
+    );
 
     @Override
     @EntityGraph(attributePaths = {"productCategory", "productOptions"})

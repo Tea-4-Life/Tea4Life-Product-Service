@@ -8,7 +8,13 @@ import tea4life.product_service.dto.response.ProductSummaryResponse;
 
 public interface ProductService {
     @Transactional(readOnly = true)
-    PageResponse<ProductSummaryResponse> findProducts(Pageable pageable);
+    PageResponse<ProductSummaryResponse> findProducts(
+            Pageable pageable,
+            String keyword,
+            Long categoryId,
+            Double minPrice,
+            Double maxPrice
+    );
 
     @Transactional(readOnly = true)
     ProductDetailResponse findProductById(Long id);

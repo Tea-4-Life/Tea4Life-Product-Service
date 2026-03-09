@@ -35,8 +35,17 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ProductSummaryResponse> findProducts(Pageable pageable) {
-        Page<@NonNull ProductSummaryResponse> responsePage = productRepository.findAllBy(pageable)
+    public PageResponse<ProductSummaryResponse> findProducts(
+            Pageable pageable,
+            String keyword,
+            Long categoryId,
+            Double minPrice,
+            Double maxPrice
+    ) {
+        validatePriceRange(minPrice, maxPrice);
+
+        Page<@NonNull ProductSummaryResponse> responsePage = productRepository
+                .findAllByFilters(normalizeKeyword(keyword), categoryId, minPrice, maxPrice, pageable)
                 .map(this::toSummaryResponse);
 
         return new PageResponse<>(responsePage);
@@ -115,5 +124,19 @@ public class ProductServiceImpl implements ProductService {
                 value.getSortOrder(),
                 value.getImageUrl()
         );
+    }
+
+    private void validatePriceRange(Double minPrice, Double maxPrice) {
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            throw new IllegalArgumentException("minPrice must be less than or equal to maxPrice");
+        }
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmedKeyword = keyword.trim();
+        return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
     }
 }
