@@ -10,6 +10,7 @@ public record ProductResponse(
         String description,
         Double basePrice,
         String imageUrl,
-        List<String> productOptionIds
+        List<String> productOptionIds,
+        ProductPopularityResponse popularity
 ) {
 }

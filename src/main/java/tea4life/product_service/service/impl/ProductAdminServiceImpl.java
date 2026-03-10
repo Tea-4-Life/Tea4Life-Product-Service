@@ -5,17 +5,20 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tea4life.product_service.client.RecommendationClient;
 import tea4life.product_service.client.StorageClient;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductRequest;
 import tea4life.product_service.dto.request.FileMoveRequest;
+import tea4life.product_service.dto.response.ProductPopularityResponse;
 import tea4life.product_service.dto.response.ProductResponse;
 import tea4life.product_service.model.Product;
 import tea4life.product_service.model.ProductCategory;
@@ -26,11 +29,15 @@ import tea4life.product_service.repository.ProductRepository;
 import tea4life.product_service.service.ProductAdminService;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
@@ -40,6 +47,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
     ProductCategoryRepository productCategoryRepository;
     ProductOptionRepository productOptionRepository;
     StorageClient storageClient;
+    RecommendationClient recommendationClient;
     KafkaTemplate<String, String> kafkaTemplate;
 
     @Value("${spring.kafka.topic.storage-delete-file}")
@@ -62,21 +70,29 @@ public class ProductAdminServiceImpl implements ProductAdminService {
             product = productRepository.save(product);
         }
 
-        return toResponse(product);
+        return toResponse(product, ProductPopularityResponse.empty(product.getId()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> findAllProducts(Pageable pageable) {
-        Page<ProductResponse> responsePage = productRepository.findAllBy(pageable)
-                .map(this::toResponse);
+        Page<Product> productPage = productRepository.findAllBy(pageable);
+        Map<Long, ProductPopularityResponse> popularityByProductId = getPopularityMap(productPage.getContent());
+
+        Page<ProductResponse> responsePage = productPage.map(product ->
+                toResponse(
+                        product,
+                        popularityByProductId.getOrDefault(product.getId(), ProductPopularityResponse.empty(product.getId()))
+                )
+        );
         return new PageResponse<>(responsePage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProductResponse findProductById(Long id) {
-        return toResponse(findProductEntityById(id));
+        Product product = findProductEntityById(id);
+        return toResponse(product, getProductPopularityOrDefault(product.getId()));
     }
 
     @Override
@@ -99,7 +115,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         if (hasText(request.imageKey()) && !Objects.equals(oldImageUrl, saved.getImageUrl())) {
             publishStorageDelete(oldImageUrl);
         }
-        return toResponse(saved);
+        return toResponse(saved, getProductPopularityOrDefault(saved.getId()));
     }
 
     @Override
@@ -160,7 +176,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
     }
 
-    private ProductResponse toResponse(Product product) {
+    private ProductResponse toResponse(Product product, ProductPopularityResponse popularity) {
         List<String> productOptionIds = product.getProductOptions() == null
                 ? List.of()
                 : product.getProductOptions().stream().map(option -> option.getId().toString()).toList();
@@ -173,8 +189,71 @@ public class ProductAdminServiceImpl implements ProductAdminService {
                 product.getDescription(),
                 product.getBasePrice(),
                 product.getImageUrl(),
-                productOptionIds
+                productOptionIds,
+                popularity
         );
+    }
+
+    private ProductPopularityResponse getProductPopularityOrDefault(Long productId) {
+        try {
+            ApiResponse<ProductPopularityResponse> response = recommendationClient.getProductPopularity(productId);
+            if (response != null && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception ex) {
+            log.warn("Khong the lay product popularity cho productId={}: {}", productId, ex.getMessage());
+        }
+        return ProductPopularityResponse.empty(productId);
+    }
+
+    private Map<Long, ProductPopularityResponse> getPopularityMap(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> productIds = products.stream()
+                .map(Product::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            ApiResponse<List<ProductPopularityResponse>> response = recommendationClient.getProductPopularities(productIds);
+            List<ProductPopularityResponse> popularities = response == null ? List.of() : response.getData();
+
+            if (popularities == null || popularities.isEmpty()) {
+                return buildDefaultPopularityMap(productIds);
+            }
+
+            Map<Long, ProductPopularityResponse> popularityMap = popularities.stream()
+                    .filter(Objects::nonNull)
+                    .filter(popularity -> hasText(popularity.productId()))
+                    .collect(Collectors.toMap(
+                            popularity -> Long.parseLong(popularity.productId()),
+                            popularity -> popularity,
+                            (left, right) -> right,
+                            LinkedHashMap::new
+                    ));
+
+            for (Long productId : productIds) {
+                popularityMap.putIfAbsent(productId, ProductPopularityResponse.empty(productId));
+            }
+            return popularityMap;
+        } catch (Exception ex) {
+            log.warn("Khong the lay product popularities: {}", ex.getMessage());
+            return buildDefaultPopularityMap(productIds);
+        }
+    }
+
+    private Map<Long, ProductPopularityResponse> buildDefaultPopularityMap(List<Long> productIds) {
+        Map<Long, ProductPopularityResponse> popularityMap = new LinkedHashMap<>();
+        for (Long productId : productIds) {
+            popularityMap.put(productId, ProductPopularityResponse.empty(productId));
+        }
+        return popularityMap;
     }
 
     private boolean hasText(String value) {
