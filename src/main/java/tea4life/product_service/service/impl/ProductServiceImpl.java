@@ -4,12 +4,17 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.dto.base.PageResponse;
+import tea4life.product_service.dto.event.ProductClickedEvent;
 import tea4life.product_service.dto.response.ProductCategoryResponse;
 import tea4life.product_service.dto.response.ProductDetailResponse;
 import tea4life.product_service.dto.response.ProductOptionResponse;
@@ -26,12 +31,18 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
     ProductRepository productRepository;
+    KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${spring.kafka.topic.product-clicked}")
+    @NonFinal
+    String productClickedTopic;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,9 +65,23 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public ProductDetailResponse findProductById(Long id) {
-        Product product = productRepository.findDetailById(id)
+        Product product = productRepository
+                .findDetailById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm"));
+
+        publishProductClicked(product.getId());
         return toDetailResponse(product);
+    }
+
+    private void publishProductClicked(Long productId) {
+        if (productId == null) return;
+
+        try {
+            kafkaTemplate.send(productClickedTopic, new ProductClickedEvent(productId));
+        } catch (Exception ex) {
+            log.warn("Failed to publish product_clicked event for productId={}: {}", productId, ex.getMessage());
+        }
+
     }
 
     private ProductSummaryResponse toSummaryResponse(Product product) {
@@ -127,15 +152,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void validatePriceRange(Double minPrice, Double maxPrice) {
-        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice)
             throw new IllegalArgumentException("minPrice must be less than or equal to maxPrice");
-        }
     }
 
     private String normalizeKeyword(String keyword) {
-        if (keyword == null) {
-            return null;
-        }
+        if (keyword == null) return null;
+
         String trimmedKeyword = keyword.trim();
         return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
     }
