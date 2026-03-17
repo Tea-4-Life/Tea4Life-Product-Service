@@ -3,8 +3,11 @@ package tea4life.product_service.service;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.dto.base.PageResponse;
+import tea4life.product_service.dto.response.PopularProductCardResponse;
 import tea4life.product_service.dto.response.ProductDetailResponse;
 import tea4life.product_service.dto.response.ProductSummaryResponse;
+
+import java.util.List;
 
 public interface ProductService {
     @Transactional(readOnly = true)
@@ -18,4 +21,7 @@ public interface ProductService {
 
     @Transactional(readOnly = true)
     ProductDetailResponse findProductById(Long id);
+
+    @Transactional(readOnly = true)
+    List<PopularProductCardResponse> getPopularProducts(Integer limit);
 }

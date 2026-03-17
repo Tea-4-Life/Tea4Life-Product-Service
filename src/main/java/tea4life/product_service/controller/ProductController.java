@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
+import tea4life.product_service.dto.response.PopularProductCardResponse;
 import tea4life.product_service.dto.response.ProductCategoryResponse;
 import tea4life.product_service.dto.response.ProductDetailResponse;
 import tea4life.product_service.dto.response.ProductSummaryResponse;
@@ -38,6 +39,13 @@ public class ProductController {
             @RequestParam(value = "maxPrice", required = false) Double maxPrice
     ) {
         return new ApiResponse<>(productService.findProducts(pageable, keyword, categoryId, minPrice, maxPrice));
+    }
+
+    @GetMapping("/popular")
+    public ApiResponse<List<PopularProductCardResponse>> getPopularProducts(
+            @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit
+    ) {
+        return new ApiResponse<>(productService.getPopularProducts(limit));
     }
 
     @GetMapping("/categories")

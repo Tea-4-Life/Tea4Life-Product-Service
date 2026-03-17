@@ -12,6 +12,11 @@ import java.util.List;
 @FeignClient(name = "TEA4LIFE-RECOMMENDATION-SERVICE", url = "${service.url.recommendation}")
 public interface RecommendationClient {
 
+    @GetMapping("/internal/recommendations/popular")
+    ApiResponse<List<ProductPopularityResponse>> getPopularProducts(
+            @RequestParam(name = "limit", required = false) Integer limit
+    );
+
     @GetMapping("/internal/recommendations/products/{productId}/popularity")
     ApiResponse<ProductPopularityResponse> getProductPopularity(@PathVariable("productId") Long productId);
 

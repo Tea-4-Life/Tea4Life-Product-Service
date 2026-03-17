@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import tea4life.product_service.model.Product;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -22,6 +23,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
               and (:categoryId is null or p.productCategory.id = :categoryId)
               and (:minPrice is null or p.basePrice >= :minPrice)
               and (:maxPrice is null or p.basePrice <= :maxPrice)
+              and p.active = true
             """)
     Page<Product> findAllByFilters(
             @Param("keyword") String keyword,
@@ -37,4 +39,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @EntityGraph(attributePaths = {"productCategory", "productOptions"})
     Optional<Product> findDetailById(Long id);
+
+    @EntityGraph(attributePaths = {"productCategory"})
+    List<Product> findByIdInAndActiveTrue(List<Long> ids);
+
+    @EntityGraph(attributePaths = {"productCategory"})
+    Page<Product> findByActiveTrueOrderByCreatedAtDesc(Pageable pageable);
 }
