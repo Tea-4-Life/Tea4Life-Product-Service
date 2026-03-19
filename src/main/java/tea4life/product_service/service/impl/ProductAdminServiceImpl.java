@@ -2,10 +2,10 @@ package tea4life.product_service.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,21 +38,41 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductAdminServiceImpl implements ProductAdminService {
 
+    // Repository
     ProductRepository productRepository;
     ProductCategoryRepository productCategoryRepository;
     ProductOptionRepository productOptionRepository;
+
+    // Client
     StorageClient storageClient;
     RecommendationClient recommendationClient;
+
+    // Kafka
     KafkaTemplate<String, String> kafkaTemplate;
 
-    @Value("${spring.kafka.topic.storage-delete-file}")
     @NonFinal
     String storageDeleteFileTopic;
+
+    public ProductAdminServiceImpl(
+            ProductRepository productRepository, ProductCategoryRepository productCategoryRepository,
+            ProductOptionRepository productOptionRepository, StorageClient storageClient,
+            @Qualifier("storageDeleteKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
+            RecommendationClient recommendationClient,
+            @Value("${spring.kafka.topic.storage-delete-file}")
+            String storageDeleteFileTopic
+    ) {
+        this.productRepository = productRepository;
+        this.productCategoryRepository = productCategoryRepository;
+        this.productOptionRepository = productOptionRepository;
+        this.storageClient = storageClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.recommendationClient = recommendationClient;
+        this.storageDeleteFileTopic = storageDeleteFileTopic;
+    }
 
     @Override
     public ProductResponse createProduct(CreateProductRequest request) {
@@ -266,3 +286,5 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
     }
 }
+
+

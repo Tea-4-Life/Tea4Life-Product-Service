@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,18 +27,34 @@ import java.util.List;
  *
  **/
 @Service
-@RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminService {
 
+    // Repository
     ProductCategoryRepository productCategoryRepository;
+
+    // Client
     StorageClient storageClient;
+
+    // Kafka
     KafkaTemplate<String, String> kafkaTemplate;
 
-    @Value("${spring.kafka.topic.storage-delete-file}")
     @NonFinal
     String storageDeleteFileTopic;
+
+    public ProductCategoryAdminServiceImpl(
+            ProductCategoryRepository productCategoryRepository, StorageClient storageClient,
+            @Qualifier("storageDeleteKafkaTemplate")
+            KafkaTemplate<String, String> kafkaTemplate,
+            @Value("${spring.kafka.topic.storage-delete-file}")
+            String storageDeleteFileTopic
+    ) {
+        this.productCategoryRepository = productCategoryRepository;
+        this.storageClient = storageClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.storageDeleteFileTopic = storageDeleteFileTopic;
+    }
 
     @Override
     public ProductCategoryResponse createCategory(CreateProductCategoryRequest request) {
@@ -141,3 +158,5 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
         }
     }
 }
+
+

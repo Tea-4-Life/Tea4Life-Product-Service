@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,19 +28,38 @@ import tea4life.product_service.repository.ProductOptionValueRepository;
 import tea4life.product_service.service.ProductOptionValueAdminService;
 
 @Service
-@RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdminService {
 
+    // Repository
     ProductOptionRepository productOptionRepository;
     ProductOptionValueRepository productOptionValueRepository;
+
+    // Client
     StorageClient storageClient;
+
+    // Kafka
     KafkaTemplate<String, String> kafkaTemplate;
 
-    @Value("${spring.kafka.topic.storage-delete-file}")
     @NonFinal
     String storageDeleteFileTopic;
+
+    public ProductOptionValueAdminServiceImpl(
+            ProductOptionRepository productOptionRepository,
+            ProductOptionValueRepository productOptionValueRepository,
+            StorageClient storageClient,
+            @Qualifier("storageDeleteKafkaTemplate")
+            KafkaTemplate<String, String> kafkaTemplate,
+            @Value("${spring.kafka.topic.storage-delete-file}")
+            String storageDeleteFileTopic
+    ) {
+        this.productOptionRepository = productOptionRepository;
+        this.productOptionValueRepository = productOptionValueRepository;
+        this.storageClient = storageClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.storageDeleteFileTopic = storageDeleteFileTopic;
+    }
 
     @Override
     public ProductOptionValueResponse createValue(Long productOptionId, CreateProductOptionValueRequest request) {
@@ -186,3 +206,5 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         );
     }
 }
+
+
