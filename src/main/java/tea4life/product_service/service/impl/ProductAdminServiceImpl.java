@@ -14,20 +14,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.client.RecommendationClient;
 import tea4life.product_service.client.StorageClient;
+import tea4life.product_service.context.UserContext;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.CreateProductRequest;
 import tea4life.product_service.dto.request.FileMoveRequest;
 import tea4life.product_service.dto.response.ProductPopularityResponse;
 import tea4life.product_service.dto.response.ProductResponse;
+import tea4life.product_service.dto.event.ProductDeletedAuditEvent;
 import tea4life.product_service.model.Product;
 import tea4life.product_service.model.ProductCategory;
 import tea4life.product_service.model.ProductOption;
+import tea4life.product_service.model.enums.AuditAction;
 import tea4life.product_service.repository.ProductCategoryRepository;
 import tea4life.product_service.repository.ProductOptionRepository;
 import tea4life.product_service.repository.ProductRepository;
 import tea4life.product_service.service.ProductAdminService;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,11 +54,15 @@ public class ProductAdminServiceImpl implements ProductAdminService {
     ProductOptionRepository productOptionRepository;
     StorageClient storageClient;
     RecommendationClient recommendationClient;
-    KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${spring.kafka.topic.storage-delete-file}")
     @NonFinal
     String storageDeleteFileTopic;
+
+    @Value("${spring.kafka.topic.audit-log}")
+    @NonFinal
+    String auditLogTopic;
 
     @Override
     public ProductResponse createProduct(CreateProductRequest request) {
@@ -122,10 +132,11 @@ public class ProductAdminServiceImpl implements ProductAdminService {
     public void deleteProduct(Long id) {
         Product product = findProductEntityById(id);
         String imageUrl = product.getImageUrl();
+        String productName = product.getName();
         productRepository.delete(product);
         publishStorageDelete(imageUrl);
+        publishProductDeletedAudit(id, productName);
     }
-
     private void applyRequestToProduct(Product product, CreateProductRequest request) {
         product.setProductCategory(findCategoryById(parseRequiredId(request.productCategoryId(), "productCategoryId")));
         product.setName(request.name());
@@ -263,6 +274,55 @@ public class ProductAdminServiceImpl implements ProductAdminService {
     private void publishStorageDelete(String fileUrl) {
         if (hasText(fileUrl)) {
             kafkaTemplate.send(storageDeleteFileTopic, fileUrl);
+        }
+    }
+
+    private void publishProductDeletedAudit(Long productId, String productName) {
+        if (productId == null) return;
+
+        try {
+            UserContext context = UserContext.get();
+            Long performedById = 0L;
+            String performerName = "Hệ thống";
+
+            if (context != null) {
+                if (context.getKeycloakId() != null && !context.getKeycloakId().isBlank()) {
+                    try {
+                        performedById = Long.parseLong(context.getKeycloakId());
+                    } catch (NumberFormatException e) {
+                        log.warn("Không thể ép kiểu keycloakId sang Long: {}", context.getKeycloakId());
+                    }
+                }
+
+                if (context.getEmail() != null && !context.getEmail().isBlank()) {
+                    performerName = context.getEmail();
+                } else if (performedById != 0L) {
+                    performerName = String.valueOf(performedById);
+                }
+            }
+
+            long currentTime = System.currentTimeMillis();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")
+                    .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+            String timeString = formatter.format(Instant.ofEpochMilli(currentTime));
+
+            String message = String.format("[%s] %s đã thực hiện hành động XÓA SẢN PHẨM: %s",
+                    timeString, performerName, productName);
+
+            ProductDeletedAuditEvent event = new ProductDeletedAuditEvent(
+                    productId,
+                    productName,
+                    AuditAction.DELETE.name(),
+                    performedById,
+                    currentTime,
+                    message
+            );
+
+            kafkaTemplate.send(auditLogTopic, event);
+            log.info("Đã bắn audit event xóa sản phẩm id={}", productId);
+
+        } catch (Exception ex) {
+            log.warn("Failed to publish audit event cho productId={}: {}", productId, ex.getMessage());
         }
     }
 }
