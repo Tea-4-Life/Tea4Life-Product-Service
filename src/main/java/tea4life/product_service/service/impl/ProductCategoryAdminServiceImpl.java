@@ -45,7 +45,7 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
 
     public ProductCategoryAdminServiceImpl(
             ProductCategoryRepository productCategoryRepository, StorageClient storageClient,
-            @Qualifier("storageDeleteKafkaTemplate")
+            @Qualifier("kafkaStringTemplate")
             KafkaTemplate<String, String> kafkaTemplate,
             @Value("${spring.kafka.topic.storage-delete-file}")
             String storageDeleteFileTopic
@@ -158,5 +158,6 @@ public class ProductCategoryAdminServiceImpl implements ProductCategoryAdminServ
         }
     }
 }
+
 
 

@@ -49,7 +49,7 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
             ProductOptionRepository productOptionRepository,
             ProductOptionValueRepository productOptionValueRepository,
             StorageClient storageClient,
-            @Qualifier("storageDeleteKafkaTemplate")
+            @Qualifier("kafkaStringTemplate")
             KafkaTemplate<String, String> kafkaTemplate,
             @Value("${spring.kafka.topic.storage-delete-file}")
             String storageDeleteFileTopic
@@ -206,5 +206,6 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         );
     }
 }
+
 
 

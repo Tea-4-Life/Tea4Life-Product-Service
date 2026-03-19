@@ -67,8 +67,8 @@ public class ProductAdminServiceImpl implements ProductAdminService {
             ProductCategoryRepository productCategoryRepository,
             ProductOptionRepository productOptionRepository,
             StorageClient storageClient,
-            @Qualifier("storageDeleteKafkaTemplate") KafkaTemplate<String, String> kafkaStringTemplate,
-            KafkaTemplate<String, Object> kafkaObjectTemplate,
+            @Qualifier("kafkaStringTemplate") KafkaTemplate<String, String> kafkaStringTemplate,
+            @Qualifier("kafkaObjectTemplate") KafkaTemplate<String, Object> kafkaObjectTemplate,
             RecommendationClient recommendationClient,
             @Value("${spring.kafka.topic.storage-delete-file}") String storageDeleteFileTopic,
             @Value("${spring.kafka.topic.audit-log}") String auditLogTopic
@@ -348,3 +348,4 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
     }
 }
+

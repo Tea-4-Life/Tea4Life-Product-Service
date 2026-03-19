@@ -2,11 +2,11 @@ package tea4life.product_service.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductServiceImpl implements ProductService {
@@ -54,6 +53,16 @@ public class ProductServiceImpl implements ProductService {
     @Value("${spring.kafka.topic.product-clicked}")
     @NonFinal
     String productClickedTopic;
+
+    public ProductServiceImpl(
+            ProductRepository productRepository,
+            @Qualifier("kafkaObjectTemplate") KafkaTemplate<String, Object> kafkaTemplate,
+            RecommendationClient recommendationClient
+    ) {
+        this.productRepository = productRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.recommendationClient = recommendationClient;
+    }
 
     @Override
     @Transactional(readOnly = true)
