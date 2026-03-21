@@ -2,9 +2,9 @@ package tea4life.product_service.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,49 +16,58 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tea4life.product_service.client.StorageClient;
+import tea4life.product_service.context.UserContext;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
+import tea4life.product_service.dto.event.OptionValueAuditEvent;
 import tea4life.product_service.dto.request.CreateProductOptionValueRequest;
 import tea4life.product_service.dto.request.FileMoveRequest;
 import tea4life.product_service.dto.response.ProductOptionValueResponse;
 import tea4life.product_service.model.ProductOption;
 import tea4life.product_service.model.ProductOptionValue;
+import tea4life.product_service.model.enums.AuditAction;
 import tea4life.product_service.repository.ProductOptionRepository;
 import tea4life.product_service.repository.ProductOptionValueRepository;
 import tea4life.product_service.service.ProductOptionValueAdminService;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 @Service
+@Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
 public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdminService {
 
-    // Repository
     ProductOptionRepository productOptionRepository;
     ProductOptionValueRepository productOptionValueRepository;
-
-    // Client
     StorageClient storageClient;
-
-    // Kafka
     KafkaTemplate<String, String> kafkaTemplate;
+    KafkaTemplate<String, Object> kafkaObjectTemplate;
 
     @NonFinal
     String storageDeleteFileTopic;
+
+    @NonFinal
+    String auditLogTopic;
 
     public ProductOptionValueAdminServiceImpl(
             ProductOptionRepository productOptionRepository,
             ProductOptionValueRepository productOptionValueRepository,
             StorageClient storageClient,
-            @Qualifier("kafkaStringTemplate")
-            KafkaTemplate<String, String> kafkaTemplate,
-            @Value("${spring.kafka.topic.storage-delete-file}")
-            String storageDeleteFileTopic
+            @Qualifier("kafkaStringTemplate") KafkaTemplate<String, String> kafkaTemplate,
+            @Qualifier("kafkaObjectTemplate") KafkaTemplate<String, Object> kafkaObjectTemplate,
+            @Value("${spring.kafka.topic.storage-delete-file}") String storageDeleteFileTopic,
+            @Value("${spring.kafka.topic.audit-log}") String auditLogTopic
     ) {
         this.productOptionRepository = productOptionRepository;
         this.productOptionValueRepository = productOptionValueRepository;
         this.storageClient = storageClient;
         this.kafkaTemplate = kafkaTemplate;
+        this.kafkaObjectTemplate = kafkaObjectTemplate;
         this.storageDeleteFileTopic = storageDeleteFileTopic;
+        this.auditLogTopic = auditLogTopic;
     }
 
     @Override
@@ -73,7 +82,11 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         ProductOptionValue savedValue = productOptionValueRepository.save(value);
         confirmImageIfNeeded(savedValue, request.imageKey());
 
-        return toResponse(productOptionValueRepository.save(savedValue));
+        ProductOptionValue finalSavedValue = productOptionValueRepository.save(savedValue);
+
+        publishOptionValueAudit(finalSavedValue.getId(), finalSavedValue.getValueName(), option.getName(), AuditAction.CREATE);
+
+        return toResponse(finalSavedValue);
     }
 
     @Override
@@ -126,6 +139,8 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
             publishStorageDelete(oldImageUrl);
         }
 
+        publishOptionValueAudit(refreshedValue.getId(), refreshedValue.getValueName(), refreshedValue.getProductOption().getName(), AuditAction.UPDATE);
+
         return toResponse(refreshedValue);
     }
 
@@ -134,9 +149,15 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
         ensureOptionExists(productOptionId);
         ProductOptionValue value = productOptionValueRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product option value not found"));
+
         String imageUrl = value.getImageUrl();
+        String valueName = value.getValueName();
+        String optionName = value.getProductOption().getName();
+
         productOptionValueRepository.delete(value);
         publishStorageDelete(imageUrl);
+
+        publishOptionValueAudit(id, valueName, optionName, AuditAction.DELETE);
     }
 
     private ProductOption findOptionById(Long productOptionId) {
@@ -205,7 +226,46 @@ public class ProductOptionValueAdminServiceImpl implements ProductOptionValueAdm
                 value.getImageUrl()
         );
     }
+
+    private void publishOptionValueAudit(Long valueId, String valueName, String parentOptionName, AuditAction action) {
+        if (valueId == null) return;
+
+        try {
+            UserContext context = UserContext.get();
+            String performerEmail = "system@tea4life.com";
+
+            if (context != null && context.getEmail() != null && !context.getEmail().isBlank()) {
+                performerEmail = context.getEmail();
+            }
+
+            long currentTime = System.currentTimeMillis();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")
+                    .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+            String timeString = formatter.format(Instant.ofEpochMilli(currentTime));
+
+            String actionVn = switch (action) {
+                case CREATE -> "THÊM MỚI GIÁ TRỊ TÙY CHỌN";
+                case UPDATE -> "CẬP NHẬT GIÁ TRỊ TÙY CHỌN";
+                case DELETE -> "XÓA GIÁ TRỊ TÙY CHỌN";
+            };
+
+            String message = String.format("[%s] %s đã thực hiện hành động %s: %s (Thuộc tùy chọn: %s)",
+                    timeString, performerEmail, actionVn, valueName, parentOptionName);
+
+            OptionValueAuditEvent event = new OptionValueAuditEvent(
+                    valueId,
+                    valueName,
+                    action,
+                    performerEmail,
+                    currentTime,
+                    message
+            );
+
+            kafkaObjectTemplate.send(auditLogTopic, event);
+            log.info("Đã bắn audit event {} cho option value id={}", action.name(), valueId);
+
+        } catch (Exception ex) {
+            log.warn("Failed to publish audit event cho optionValueId={}: {}", valueId, ex.getMessage());
+        }
+    }
 }
-
-
-
