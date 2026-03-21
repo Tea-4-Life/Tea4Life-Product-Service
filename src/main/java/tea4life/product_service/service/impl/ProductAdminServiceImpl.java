@@ -17,7 +17,7 @@ import tea4life.product_service.client.StorageClient;
 import tea4life.product_service.context.UserContext;
 import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
-import tea4life.product_service.dto.event.ProductDeletedAuditEvent;
+import tea4life.product_service.dto.event.ProductAuditEvent;
 import tea4life.product_service.dto.request.CreateProductRequest;
 import tea4life.product_service.dto.request.FileMoveRequest;
 import tea4life.product_service.dto.response.ProductPopularityResponse;
@@ -94,12 +94,12 @@ public class ProductAdminServiceImpl implements ProductAdminService {
             String destinationPath = "products/items/" + product.getId();
             ApiResponse<String> storageResponse = storageClient.confirmFile(new FileMoveRequest(request.imageKey(), destinationPath));
             if (storageResponse.getErrorCode() != null) {
-                throw new RuntimeException("Loi di chuyen file: " + storageResponse.getErrorMessage());
+                throw new RuntimeException("Lỗi di chuyển file: " + storageResponse.getErrorMessage());
             }
             product.setImageUrl(storageResponse.getData());
             product = productRepository.save(product);
         }
-
+        publishProductAudit(product.getId(), product.getName(), AuditAction.CREATE);
         return toResponse(product, ProductPopularityResponse.empty(product.getId()));
     }
 
@@ -136,7 +136,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
             String destinationPath = "products/items/" + product.getId();
             ApiResponse<String> storageResponse = storageClient.confirmFile(new FileMoveRequest(request.imageKey(), destinationPath));
             if (storageResponse.getErrorCode() != null) {
-                throw new RuntimeException("Loi di chuyen file: " + storageResponse.getErrorMessage());
+                throw new RuntimeException("Lỗi di chuyển file: " + storageResponse.getErrorMessage());
             }
             product.setImageUrl(storageResponse.getData());
         }
@@ -145,6 +145,8 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         if (hasText(request.imageKey()) && !Objects.equals(oldImageUrl, saved.getImageUrl())) {
             publishStorageDelete(oldImageUrl);
         }
+
+        publishProductAudit(saved.getId(), saved.getName(), AuditAction.UPDATE);
         return toResponse(saved, getProductPopularityOrDefault(saved.getId()));
     }
 
@@ -155,7 +157,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         String productName = product.getName();
         productRepository.delete(product);
         publishStorageDelete(imageUrl);
-        publishProductDeletedAudit(id, productName);
+        publishProductAudit(id, productName, AuditAction.DELETE);
     }
 
     private void applyRequestToProduct(Product product, CreateProductRequest request) {
@@ -298,30 +300,15 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
     }
 
-    private void publishProductDeletedAudit(Long productId, String productName) {
-        if (productId == null) {
-            return;
-        }
+    private void publishProductAudit(Long productId, String productName, AuditAction action) {
+        if (productId == null) return;
 
         try {
             UserContext context = UserContext.get();
-            Long performedById = 0L;
-            String performerName = "Hệ thống";
+            String performerEmail = "system@tea4life.com";
 
-            if (context != null) {
-                if (context.getKeycloakId() != null && !context.getKeycloakId().isBlank()) {
-                    try {
-                        performedById = Long.parseLong(context.getKeycloakId());
-                    } catch (NumberFormatException ex) {
-                        log.warn("Khong the ep kieu keycloakId sang Long: {}", context.getKeycloakId());
-                    }
-                }
-
-                if (context.getEmail() != null && !context.getEmail().isBlank()) {
-                    performerName = context.getEmail();
-                } else if (performedById != 0L) {
-                    performerName = String.valueOf(performedById);
-                }
+            if (context != null && context.getEmail() != null && !context.getEmail().isBlank()) {
+                performerEmail = context.getEmail();
             }
 
             long currentTime = System.currentTimeMillis();
@@ -329,20 +316,28 @@ public class ProductAdminServiceImpl implements ProductAdminService {
                     .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
             String timeString = formatter.format(Instant.ofEpochMilli(currentTime));
 
-            String message = String.format("[%s] %s da thuc hien hanh dong XOA SAN PHAM: %s",
-                    timeString, performerName, productName);
+            // Chuyển action thành chữ tiếng Việt để ghép vào message
+            String actionVn = switch (action) {
+                case CREATE -> "THÊM MỚI SẢN PHẨM";
+                case UPDATE -> "CẬP NHẬT SẢN PHẨM";
+                case DELETE -> "XÓA SẢN PHẨM";
+            };
 
-            ProductDeletedAuditEvent event = new ProductDeletedAuditEvent(
+            String message = String.format("[%s] %s đã thực hiện hành động %s: %s",
+                    timeString, performerEmail, actionVn, productName);
+
+            ProductAuditEvent event = new ProductAuditEvent(
                     productId,
                     productName,
-                    AuditAction.DELETE.name(),
-                    performedById,
+                    action,
+                    performerEmail,
                     currentTime,
                     message
             );
 
             kafkaObjectTemplate.send(auditLogTopic, event);
-            log.info("Da ban audit event xoa san pham id={}", productId);
+            log.info("Đã bắn audit event {} cho sản phẩm id={}", action.name(), productId);
+
         } catch (Exception ex) {
             log.warn("Failed to publish audit event cho productId={}: {}", productId, ex.getMessage());
         }
