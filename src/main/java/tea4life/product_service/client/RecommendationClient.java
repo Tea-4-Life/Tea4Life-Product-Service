@@ -12,7 +12,7 @@ import java.util.List;
 @FeignClient(name = "TEA4LIFE-RECOMMENDATION-SERVICE", url = "${service.url.recommendation}")
 public interface RecommendationClient {
 
-    @GetMapping("/internal/recommendations/popular")
+    @GetMapping("/internal/recommendations/products/popularity/top")
     ApiResponse<List<ProductPopularityResponse>> getPopularProducts(
             @RequestParam(name = "limit", required = false) Integer limit
     );
@@ -20,7 +20,7 @@ public interface RecommendationClient {
     @GetMapping("/internal/recommendations/products/{productId}/popularity")
     ApiResponse<ProductPopularityResponse> getProductPopularity(@PathVariable("productId") Long productId);
 
-    @GetMapping("/internal/recommendations/popularity")
+    @GetMapping("/internal/recommendations/products/popularity")
     ApiResponse<List<ProductPopularityResponse>> getProductPopularities(
             @RequestParam("productIds") List<Long> productIds
     );
