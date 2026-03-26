@@ -48,14 +48,20 @@ import java.util.stream.Collectors;
 @Transactional
 public class ProductAdminServiceImpl implements ProductAdminService {
 
+    // Repository
     ProductRepository productRepository;
     ProductCategoryRepository productCategoryRepository;
     ProductOptionRepository productOptionRepository;
+
+    // Client
     StorageClient storageClient;
     RecommendationClient recommendationClient;
+
+    // Kafka
     KafkaTemplate<String, String> kafkaStringTemplate;
     KafkaTemplate<String, Object> kafkaObjectTemplate;
 
+    // Topic
     @NonFinal
     String storageDeleteFileTopic;
 
@@ -84,37 +90,50 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         this.auditLogTopic = auditLogTopic;
     }
 
+    /**
+     * ========================================================
+     * CRUD
+     * ========================================================
+     */
     @Override
     public ProductResponse createProduct(CreateProductRequest request) {
+
+        // 1. Lấy thông tin từ request rồi lưu vào db
         Product product = new Product();
-        applyRequestToProduct(product, request);
+        mapToProduct(product, request);
         product = productRepository.save(product);
 
+        // 2. Upload ảnh rồi cập nhật vào db
         if (hasText(request.imageKey())) {
             String destinationPath = "products/items/" + product.getId();
-            ApiResponse<String> storageResponse = storageClient.confirmFile(new FileMoveRequest(request.imageKey(), destinationPath));
-            if (storageResponse.getErrorCode() != null) {
+
+            ApiResponse<String> storageResponse = storageClient
+                    .confirmFile(new FileMoveRequest(request.imageKey(), destinationPath));
+            if (storageResponse.getErrorCode() != null)
                 throw new RuntimeException("Lỗi di chuyển file: " + storageResponse.getErrorMessage());
-            }
+
             product.setImageUrl(storageResponse.getData());
             product = productRepository.save(product);
         }
+
+        // 3. Bắn topic để audit
         publishProductAudit(product.getId(), product.getName(), AuditAction.CREATE);
+
         return toResponse(product, ProductPopularityResponse.empty(product.getId()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> findAllProducts(Pageable pageable) {
+
         Page<Product> productPage = productRepository.findAllBy(pageable);
         Map<Long, ProductPopularityResponse> popularityByProductId = getPopularityMap(productPage.getContent());
 
-        Page<ProductResponse> responsePage = productPage.map(product ->
-                toResponse(
+        Page<ProductResponse> responsePage = productPage.
+                map(product -> toResponse(
                         product,
                         popularityByProductId.getOrDefault(product.getId(), ProductPopularityResponse.empty(product.getId()))
-                )
-        );
+                ));
         return new PageResponse<>(responsePage);
     }
 
@@ -130,7 +149,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         Product product = findProductEntityById(id);
         String oldImageUrl = product.getImageUrl();
 
-        applyRequestToProduct(product, request);
+        mapToProduct(product, request);
 
         if (hasText(request.imageKey())) {
             String destinationPath = "products/items/" + product.getId();
@@ -160,7 +179,12 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         publishProductAudit(id, productName, AuditAction.DELETE);
     }
 
-    private void applyRequestToProduct(Product product, CreateProductRequest request) {
+    /**
+     * ========================================================
+     * Mapping / Lookup
+     * ========================================================
+     */
+    private void mapToProduct(Product product, CreateProductRequest request) {
         product.setProductCategory(findCategoryById(parseRequiredId(request.productCategoryId(), "productCategoryId")));
         product.setName(request.name());
         product.setDescription(request.description());
@@ -170,12 +194,12 @@ public class ProductAdminServiceImpl implements ProductAdminService {
 
     private Product findProductEntityById(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay san pham"));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm"));
     }
 
     private ProductCategory findCategoryById(Long categoryId) {
         return productCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay danh muc san pham"));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục sản phẩm"));
     }
 
     private List<ProductOption> resolveProductOptions(List<String> productOptionIds) {
@@ -201,15 +225,20 @@ public class ProductAdminServiceImpl implements ProductAdminService {
 
     private Long parseRequiredId(String rawId, String fieldName) {
         if (!hasText(rawId)) {
-            throw new IllegalArgumentException(fieldName + " khong duoc de trong");
+            throw new IllegalArgumentException(fieldName + " không được để trống");
         }
         try {
             return Long.parseLong(rawId.trim());
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException(fieldName + " khong hop le", ex);
+            throw new IllegalArgumentException(fieldName + " không hợp lệ", ex);
         }
     }
 
+    /**
+     * ========================================================
+     * Response / Popularity
+     * ========================================================
+     */
     private ProductResponse toResponse(Product product, ProductPopularityResponse popularity) {
         List<String> productOptionIds = product.getProductOptions() == null
                 ? List.of()
@@ -230,13 +259,16 @@ public class ProductAdminServiceImpl implements ProductAdminService {
 
     private ProductPopularityResponse getProductPopularityOrDefault(Long productId) {
         try {
-            ApiResponse<ProductPopularityResponse> response = recommendationClient.getProductPopularity(productId);
-            if (response != null && response.getData() != null) {
+            ApiResponse<ProductPopularityResponse> response = recommendationClient
+                    .getProductPopularity(productId);
+
+            if (response != null && response.getData() != null)
                 return response.getData();
-            }
+
         } catch (Exception ex) {
             log.warn("Khong the lay product popularity cho productId={}: {}", productId, ex.getMessage());
         }
+
         return ProductPopularityResponse.empty(productId);
     }
 
@@ -290,6 +322,11 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         return popularityMap;
     }
 
+    /**
+     * ========================================================
+     * Kafka Publish
+     * ========================================================
+     */
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
