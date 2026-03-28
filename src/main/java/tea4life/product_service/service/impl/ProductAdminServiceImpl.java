@@ -92,7 +92,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
 
     /**
      * ========================================================
-     * CRUD
+     * Create Product
      * ========================================================
      */
     @Override
@@ -119,9 +119,14 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         // 3. Bắn topic để audit
         publishProductAudit(product.getId(), product.getName(), AuditAction.CREATE);
 
-        return toResponse(product, ProductPopularityResponse.empty(product.getId()));
+        return mapToProductResponse(product, ProductPopularityResponse.empty(product.getId()));
     }
 
+    /**
+     * ========================================================
+     * Get Products
+     * ========================================================
+     */
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductResponse> findAllProducts(Pageable pageable) {
@@ -130,7 +135,7 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         Map<Long, ProductPopularityResponse> popularityByProductId = getPopularityMap(productPage.getContent());
 
         Page<ProductResponse> responsePage = productPage.
-                map(product -> toResponse(
+                map(product -> mapToProductResponse(
                         product,
                         popularityByProductId.getOrDefault(product.getId(), ProductPopularityResponse.empty(product.getId()))
                 ));
@@ -141,9 +146,14 @@ public class ProductAdminServiceImpl implements ProductAdminService {
     @Transactional(readOnly = true)
     public ProductResponse findProductById(Long id) {
         Product product = findProductEntityById(id);
-        return toResponse(product, getProductPopularityOrDefault(product.getId()));
+        return mapToProductResponse(product, getProductPopularityOrDefault(product.getId()));
     }
 
+    /**
+     * ========================================================
+     * Update Product
+     * ========================================================
+     */
     @Override
     public ProductResponse updateProduct(Long id, CreateProductRequest request) {
         Product product = findProductEntityById(id);
@@ -166,9 +176,14 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
 
         publishProductAudit(saved.getId(), saved.getName(), AuditAction.UPDATE);
-        return toResponse(saved, getProductPopularityOrDefault(saved.getId()));
+        return mapToProductResponse(saved, getProductPopularityOrDefault(saved.getId()));
     }
 
+    /**
+     * ========================================================
+     * Delete Product
+     * ========================================================
+     */
     @Override
     public void deleteProduct(Long id) {
         Product product = findProductEntityById(id);
@@ -181,65 +196,26 @@ public class ProductAdminServiceImpl implements ProductAdminService {
 
     /**
      * ========================================================
-     * Mapping / Lookup
+     * Mapping
      * ========================================================
      */
-    private void mapToProduct(Product product, CreateProductRequest request) {
-        product.setProductCategory(findCategoryById(parseRequiredId(request.productCategoryId(), "productCategoryId")));
+    private void mapToProduct(
+            Product product,
+            CreateProductRequest request
+    ) {
+        product.setProductCategory(
+                findCategoryById(parseRequiredId(request.productCategoryId(), "productCategoryId"))
+        );
         product.setName(request.name());
         product.setDescription(request.description());
         product.setBasePrice(request.basePrice());
         product.setProductOptions(resolveProductOptions(request.productOptionIds()));
     }
 
-    private Product findProductEntityById(Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm"));
-    }
-
-    private ProductCategory findCategoryById(Long categoryId) {
-        return productCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục sản phẩm"));
-    }
-
-    private List<ProductOption> resolveProductOptions(List<String> productOptionIds) {
-        if (productOptionIds == null || productOptionIds.isEmpty()) {
-            return List.of();
-        }
-
-        List<Long> optionIds = productOptionIds.stream()
-                .map(id -> parseRequiredId(id, "productOptionId"))
-                .toList();
-
-        List<ProductOption> options = productOptionRepository.findAllById(optionIds);
-        Set<Long> foundIds = options.stream().map(ProductOption::getId).collect(java.util.stream.Collectors.toSet());
-
-        for (Long optionId : new HashSet<>(optionIds)) {
-            if (!foundIds.contains(optionId)) {
-                throw new EntityNotFoundException("Khong tim thay product option: " + optionId);
-            }
-        }
-
-        return options;
-    }
-
-    private Long parseRequiredId(String rawId, String fieldName) {
-        if (!hasText(rawId)) {
-            throw new IllegalArgumentException(fieldName + " không được để trống");
-        }
-        try {
-            return Long.parseLong(rawId.trim());
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException(fieldName + " không hợp lệ", ex);
-        }
-    }
-
-    /**
-     * ========================================================
-     * Response / Popularity
-     * ========================================================
-     */
-    private ProductResponse toResponse(Product product, ProductPopularityResponse popularity) {
+    private ProductResponse mapToProductResponse(
+            Product product,
+            ProductPopularityResponse popularity
+    ) {
         List<String> productOptionIds = product.getProductOptions() == null
                 ? List.of()
                 : product.getProductOptions().stream().map(option -> option.getId().toString()).toList();
@@ -255,6 +231,44 @@ public class ProductAdminServiceImpl implements ProductAdminService {
                 productOptionIds,
                 popularity
         );
+    }
+
+    /**
+     * ========================================================
+     * Lookup
+     * ========================================================
+     */
+    private Product findProductEntityById(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy sản phẩm"));
+    }
+
+    private ProductCategory findCategoryById(Long categoryId) {
+        return productCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục sản phẩm"));
+    }
+
+    private List<ProductOption> resolveProductOptions(List<String> productOptionIds) {
+        if (productOptionIds == null || productOptionIds.isEmpty())
+            return List.of();
+
+        List<Long> optionIds = productOptionIds.stream()
+                .map(id -> parseRequiredId(id, "productOptionId"))
+                .toList();
+
+        List<ProductOption> options = productOptionRepository.findAllById(optionIds);
+        Set<Long> foundIds = options
+                .stream()
+                .map(ProductOption::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        for (Long optionId : new HashSet<>(optionIds)) {
+            if (!foundIds.contains(optionId)) {
+                throw new EntityNotFoundException("Không tìm thấy Product Optoin này: " + optionId);
+            }
+        }
+
+        return options;
     }
 
     private ProductPopularityResponse getProductPopularityOrDefault(Long productId) {
@@ -287,7 +301,8 @@ public class ProductAdminServiceImpl implements ProductAdminService {
         }
 
         try {
-            ApiResponse<List<ProductPopularityResponse>> response = recommendationClient.getProductPopularities(productIds);
+            ApiResponse<List<ProductPopularityResponse>> response = recommendationClient
+                    .getProductPopularities(productIds);
             List<ProductPopularityResponse> popularities = response == null ? List.of() : response.getData();
 
             if (popularities == null || popularities.isEmpty()) {
@@ -320,6 +335,22 @@ public class ProductAdminServiceImpl implements ProductAdminService {
             popularityMap.put(productId, ProductPopularityResponse.empty(productId));
         }
         return popularityMap;
+    }
+
+    /**
+     * ========================================================
+     * Utils
+     * ========================================================
+     */
+    private Long parseRequiredId(String rawId, String fieldName) {
+        if (!hasText(rawId)) {
+            throw new IllegalArgumentException(fieldName + " không được để trống");
+        }
+        try {
+            return Long.parseLong(rawId.trim());
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(fieldName + " không hợp lệ", ex);
+        }
     }
 
     /**
