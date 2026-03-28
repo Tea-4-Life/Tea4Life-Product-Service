@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
+    static final int RANDOM_PRODUCT_LIMIT = 10;
+
     ProductRepository productRepository;
     KafkaTemplate<String, Object> kafkaTemplate;
     RecommendationClient recommendationClient;
@@ -113,6 +115,14 @@ public class ProductServiceImpl implements ProductService {
         }
 
         return fallbackPopularProducts(safeLimit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductSummaryResponse> getRandomProducts() {
+        return productRepository.findRandomActiveProducts(RANDOM_PRODUCT_LIMIT).stream()
+                .map(this::toSummaryResponse)
+                .toList();
     }
 
     private void publishProductClicked(Long productId) {

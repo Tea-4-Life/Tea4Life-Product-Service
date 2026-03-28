@@ -24,4 +24,7 @@ public interface ProductService {
 
     @Transactional(readOnly = true)
     List<PopularProductCardResponse> getPopularProducts(Integer limit);
+
+    @Transactional(readOnly = true)
+    List<ProductSummaryResponse> getRandomProducts();
 }

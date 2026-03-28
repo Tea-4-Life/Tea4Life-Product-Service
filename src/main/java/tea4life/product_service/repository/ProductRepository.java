@@ -45,4 +45,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @EntityGraph(attributePaths = {"productCategory"})
     Page<Product> findByActiveTrueOrderByCreatedAtDesc(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"productCategory"})
+    @Query(value = """
+            select *
+            from products
+            where active = true
+            order by rand()
+            limit :limit
+            """, nativeQuery = true)
+    List<Product> findRandomActiveProducts(@Param("limit") int limit);
 }

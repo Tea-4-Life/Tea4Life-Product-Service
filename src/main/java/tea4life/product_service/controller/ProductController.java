@@ -48,6 +48,11 @@ public class ProductController {
         return new ApiResponse<>(productService.getPopularProducts(limit));
     }
 
+    @GetMapping("/random")
+    public ApiResponse<List<ProductSummaryResponse>> getRandomProducts() {
+        return new ApiResponse<>(productService.getRandomProducts());
+    }
+
     @GetMapping("/categories")
     public ApiResponse<List<ProductCategoryResponse>> findCategories() {
         return new ApiResponse<>(productCategoryAdminService.findAllCategories());
