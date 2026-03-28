@@ -48,7 +48,7 @@ public class ProductController {
         return new ApiResponse<>(productService.getPopularProducts(limit));
     }
 
-    @GetMapping("/random")
+    @GetMapping("/random-items")
     public ApiResponse<List<ProductSummaryResponse>> getRandomProducts() {
         return new ApiResponse<>(productService.getRandomProducts());
     }
