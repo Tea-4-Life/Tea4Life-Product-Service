@@ -1,10 +1,17 @@
 package tea4life.product_service.controller.admin.news;
 
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import tea4life.product_service.dto.request.NewsCategoryRequest;
+import tea4life.product_service.dto.response.NewsCategoryResponse;
+import tea4life.product_service.service.NewsCategoryAdminService;
+
+import java.util.List;
 
 /**
  * @author Le Tran Gia Huy
@@ -18,5 +25,32 @@ import org.springframework.web.bind.annotation.RestController;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequestMapping("/admin/news-categories")
 public class NewsCategoryAdminController {
+    NewsCategoryAdminService newsCategoryService;
 
+    @GetMapping
+    public ResponseEntity<List<NewsCategoryResponse>> getAll() {
+        return ResponseEntity.ok(newsCategoryService.findAllNewsCategory());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<NewsCategoryResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(newsCategoryService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<NewsCategoryResponse> create(@Valid @RequestBody NewsCategoryRequest request) {
+        // Trả về 201 CREATED khi tạo mới thành công
+        return ResponseEntity.status(HttpStatus.CREATED).body(newsCategoryService.create(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<NewsCategoryResponse> update(@PathVariable Long id, @Valid @RequestBody NewsCategoryRequest request) {
+        return ResponseEntity.ok(newsCategoryService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        newsCategoryService.delete(id);
+        return ResponseEntity.noContent().build(); // Trả về 204 NO CONTENT
+    }
 }

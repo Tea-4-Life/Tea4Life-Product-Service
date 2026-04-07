@@ -25,15 +25,17 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class NewsCategoryServiceImpl {
+public class NewsCategoryServiceImpl implements tea4life.product_service.service.NewsCategoryService {
     private final NewsCategoryRepository newsCategoryRepository;
     private final NewsMapper newsMapper;
 
+    @Override
     public List<NewsCategoryResponse> findAllNewsCategory() {
         return newsCategoryRepository.findAll().stream()
                 .map(newsMapper::mapToCategoryResponse).toList();
     }
 
+    @Override
     public NewsCategoryResponse findBySlug(String slug) {
         return newsCategoryRepository.findBySlug(slug)
                 .map(newsMapper::mapToCategoryResponse)
