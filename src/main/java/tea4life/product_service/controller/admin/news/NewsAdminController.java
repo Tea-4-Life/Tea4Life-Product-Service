@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.request.NewsRequest;
 import tea4life.product_service.dto.response.NewsDetailResponse;
@@ -29,23 +30,23 @@ public class NewsAdminController {
     NewsAdminService newsService;
 
     @GetMapping
-    public ResponseEntity<PageResponse<NewsSummaryResponse>> getAll(Pageable pageable) {
-        return ResponseEntity.ok(newsService.findAll(pageable));
+    public ApiResponse<PageResponse<NewsSummaryResponse>> getAll(Pageable pageable) {
+        return new ApiResponse<>(newsService.findAll(pageable));
     }
 
     @GetMapping("/{id}") // Admin thường sửa bằng ID
-    public ResponseEntity<NewsDetailResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(newsService.findById(id));
+    public ApiResponse<NewsDetailResponse> getById(@PathVariable Long id) {
+        return new ApiResponse<>(newsService.findById(id));
     }
 
     @PostMapping
-    public ResponseEntity<NewsDetailResponse> create(@Valid @RequestBody NewsRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(newsService.create(request));
+    public ApiResponse<NewsDetailResponse> create(@Valid @RequestBody NewsRequest request) {
+        return new ApiResponse<>(newsService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<NewsDetailResponse> update(@PathVariable Long id, @Valid @RequestBody NewsRequest request) {
-        return ResponseEntity.ok(newsService.update(id, request));
+    public ApiResponse<NewsDetailResponse> update(@PathVariable Long id, @Valid @RequestBody NewsRequest request) {
+        return new ApiResponse<>(newsService.update(id, request));
     }
 
     @DeleteMapping("/{id}")

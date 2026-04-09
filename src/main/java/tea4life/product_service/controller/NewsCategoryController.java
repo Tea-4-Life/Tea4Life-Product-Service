@@ -34,7 +34,7 @@ public class NewsCategoryController {
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<NewsCategoryResponse> getBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(newsCategoryService.findBySlug(slug));
+    public ApiResponse<NewsCategoryResponse> getBySlug(@PathVariable String slug) {
+        return new ApiResponse<>(newsCategoryService.findBySlug(slug));
     }
 }
