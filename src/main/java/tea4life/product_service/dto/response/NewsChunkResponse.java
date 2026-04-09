@@ -12,7 +12,7 @@ import tea4life.product_service.model.enums.NewsContentType;
  */
 public record NewsChunkResponse(
         @JsonSerialize(using = ToStringSerializer.class)
-        Long id,
+        String id,
         NewsContentType type,
         String content,
         int sortIndex

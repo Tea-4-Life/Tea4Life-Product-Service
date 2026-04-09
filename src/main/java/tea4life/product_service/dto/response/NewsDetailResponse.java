@@ -15,13 +15,13 @@ import java.util.List;
  */
 public record NewsDetailResponse(
         @JsonSerialize(using = ToStringSerializer.class)
-         Long id,
-         String title,
-         String slug,
-         String thumbnailUrl,
-         NewsCategoryResponse category,
-         List<NewsChunkResponse> chunks,
-         Instant createdAt,
-         Instant updatedAt
+        String id,
+        String title,
+        String slug,
+        String thumbnailUrl,
+        NewsCategoryResponse category,
+        List<NewsChunkResponse> chunks,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

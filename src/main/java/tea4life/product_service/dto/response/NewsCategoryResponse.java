@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
  */
 public record NewsCategoryResponse(
         @JsonSerialize(using = ToStringSerializer.class)
-        Long id,
+        String id,
         String name,
         String slug
 ) {

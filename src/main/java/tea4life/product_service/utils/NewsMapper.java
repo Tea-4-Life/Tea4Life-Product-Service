@@ -19,7 +19,7 @@ import tea4life.product_service.model.NewsCategory;
 public class NewsMapper {
     public NewsDetailResponse mapToDetailResponse(News news) {
         return new NewsDetailResponse(
-                news.getId(),
+                news.getId().toString(),
                 news.getTitle(),
                 news.getSlug(),
                 news.getThumbnailUrl(),
@@ -27,7 +27,7 @@ public class NewsMapper {
                 news.getChunks().stream()
                         .map(chunk -> new NewsChunkResponse(
                                 // Chuyển Long ID sang String
-                                chunk.getId(),
+                                chunk.getId().toString(),
                                 chunk.getType(),
                                 chunk.getContent(),
                                 chunk.getSortIndex()
@@ -40,7 +40,7 @@ public class NewsMapper {
 
     public NewsCategoryResponse mapToCategoryResponse(NewsCategory category) {
         return new NewsCategoryResponse(
-                category.getId(),
+                category.getId().toString(),
                 category.getName(),
                 category.getSlug()
         );
@@ -48,7 +48,7 @@ public class NewsMapper {
 
     public NewsSummaryResponse mapToSummaryResponse(News news) {
         return new NewsSummaryResponse(
-                news.getId(),
+                news.getId().toString(),
                 news.getTitle(),
                 news.getSlug(),
                 news.getThumbnailUrl(),

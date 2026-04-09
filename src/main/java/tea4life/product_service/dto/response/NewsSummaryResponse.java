@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 
 public record NewsSummaryResponse(
         @JsonSerialize(using = ToStringSerializer.class)
-        Long id,
+        String id,
         String title,
         String slug,
         String thumbnailUrl,
