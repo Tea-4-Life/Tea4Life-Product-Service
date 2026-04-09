@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.response.NewsCategoryResponse;
 import tea4life.product_service.service.NewsCategoryService;
 
@@ -28,8 +29,8 @@ public class NewsCategoryController {
     NewsCategoryService newsCategoryService;
 
     @GetMapping
-    public ResponseEntity<List<NewsCategoryResponse>> getAll() {
-        return ResponseEntity.ok(newsCategoryService.findAllNewsCategory());
+    public ApiResponse<List<NewsCategoryResponse>> getAll() {
+        return new ApiResponse<>(newsCategoryService.findAllNewsCategory());
     }
 
     @GetMapping("/{slug}")

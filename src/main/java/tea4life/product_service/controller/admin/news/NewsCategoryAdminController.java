@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.request.NewsCategoryRequest;
 import tea4life.product_service.dto.response.NewsCategoryResponse;
 import tea4life.product_service.service.NewsCategoryAdminService;
@@ -28,8 +29,8 @@ public class NewsCategoryAdminController {
     NewsCategoryAdminService newsCategoryService;
 
     @GetMapping
-    public ResponseEntity<List<NewsCategoryResponse>> getAll() {
-        return ResponseEntity.ok(newsCategoryService.findAllNewsCategory());
+    public ApiResponse<List<NewsCategoryResponse>> getAll() {
+        return new ApiResponse<>(newsCategoryService.findAllNewsCategory());
     }
 
     @GetMapping("/{id}")
