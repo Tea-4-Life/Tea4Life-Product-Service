@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tea4life.product_service.dto.base.ApiResponse;
 import tea4life.product_service.dto.base.PageResponse;
 import tea4life.product_service.dto.response.NewsDetailResponse;
 import tea4life.product_service.dto.response.NewsSummaryResponse;
@@ -30,21 +31,21 @@ public class NewsController {
 
     // FE gọi trang chủ: /api/v1/news?page=0&size=10
     @GetMapping
-    public ResponseEntity<PageResponse<NewsSummaryResponse>> getAll(Pageable pageable) {
-        return ResponseEntity.ok(newsService.findAll(pageable));
+    public ApiResponse<PageResponse<NewsSummaryResponse>> getAll(Pageable pageable) {
+        return new ApiResponse<>(newsService.findAll(pageable));
     }
 
-    // FE gọi khi khách click vào đọc bài: /api/v1/news/tra-dao-cam-sa-a1b2c
+    // FE gọi khi khách click vào đọc bài
     @GetMapping("/{slug}")
-    public ResponseEntity<NewsDetailResponse> getBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(newsService.findBySlug(slug));
+    public ApiResponse<NewsDetailResponse> getBySlug(@PathVariable String slug) {
+        return new ApiResponse<>(newsService.findBySlug(slug));
     }
 
-    // FE gọi khi khách bấm vào một Danh mục trên thanh menu: /api/v1/news/category/khuyen-mai
+    // FE gọi khi khách bấm vào một Danh mục trên thanh menu
     @GetMapping("/category/{categorySlug}")
-    public ResponseEntity<PageResponse<NewsSummaryResponse>> getByCategorySlug(
+    public ApiResponse<PageResponse<NewsSummaryResponse>> getByCategorySlug(
             @PathVariable String categorySlug,
             Pageable pageable) {
-        return ResponseEntity.ok(newsService.findByCategorySlug(categorySlug, pageable));
+        return new ApiResponse<>(newsService.findByCategorySlug(categorySlug, pageable));
     }
 }

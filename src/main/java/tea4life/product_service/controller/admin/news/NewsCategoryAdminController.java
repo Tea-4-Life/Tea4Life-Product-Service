@@ -34,19 +34,19 @@ public class NewsCategoryAdminController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<NewsCategoryResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(newsCategoryService.findById(id));
+    public ApiResponse<NewsCategoryResponse> getById(@PathVariable Long id) {
+        return new ApiResponse<>(newsCategoryService.findById(id));
     }
 
     @PostMapping
-    public ResponseEntity<NewsCategoryResponse> create(@Valid @RequestBody NewsCategoryRequest request) {
+    public ApiResponse<NewsCategoryResponse> create(@Valid @RequestBody NewsCategoryRequest request) {
         // Trả về 201 CREATED khi tạo mới thành công
-        return ResponseEntity.status(HttpStatus.CREATED).body(newsCategoryService.create(request));
+        return new ApiResponse<>(newsCategoryService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<NewsCategoryResponse> update(@PathVariable Long id, @Valid @RequestBody NewsCategoryRequest request) {
-        return ResponseEntity.ok(newsCategoryService.update(id, request));
+    public ApiResponse<NewsCategoryResponse> update(@PathVariable Long id, @Valid @RequestBody NewsCategoryRequest request) {
+        return new ApiResponse<>(newsCategoryService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
