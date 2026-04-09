@@ -15,6 +15,8 @@ import tea4life.product_service.dto.response.NewsDetailResponse;
 import tea4life.product_service.dto.response.NewsSummaryResponse;
 import tea4life.product_service.service.NewsService;
 
+import java.util.List;
+
 /**
  * @author Le Tran Gia Huy
  * @created 07/04/2026 - 2:02 PM
@@ -47,5 +49,10 @@ public class NewsController {
             @PathVariable String categorySlug,
             Pageable pageable) {
         return new ApiResponse<>(newsService.findByCategorySlug(categorySlug, pageable));
+    }
+
+    @GetMapping("/latest")
+    public ApiResponse<List<NewsSummaryResponse>> getLatestNews() {
+        return new ApiResponse<>(newsService.findTop3LatestNews());
     }
 }

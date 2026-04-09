@@ -17,6 +17,8 @@ import tea4life.product_service.repository.news.NewsRepository;
 import tea4life.product_service.service.NewsService;
 import tea4life.product_service.utils.NewsMapper;
 
+import java.util.List;
+
 /**
  * @author Le Tran Gia Huy
  * @created 07/04/2026 - 2:27 PM
@@ -38,6 +40,13 @@ public class NewsServiceImpl implements NewsService {
                 .findAllNewsWithCategory(pageable)
                 .map(newsMapper::mapToSummaryResponse);
         return new PageResponse<>(responsePage);
+    }
+
+    public List<NewsSummaryResponse> findTop3LatestNews() {
+        return newsRepository.findTop3ByOrderByCreatedAtDesc()
+                .stream()
+                .map(newsMapper::mapToSummaryResponse)
+                .toList();
     }
 
     public NewsDetailResponse findBySlug(String slug) {

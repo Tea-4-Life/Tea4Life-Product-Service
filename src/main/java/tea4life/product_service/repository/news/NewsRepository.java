@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import tea4life.product_service.model.News;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -19,6 +20,9 @@ import java.util.Optional;
 public interface NewsRepository extends JpaRepository<News, Long> {
     @EntityGraph(attributePaths = {"category"})
     Optional<News> findBySlug(String slug);
+
+    @EntityGraph(attributePaths = {"category"})
+    List<News> findTop3ByOrderByCreatedAtDesc();
 
     @Query(value = "SELECT n FROM News n JOIN FETCH n.category",
             countQuery = "SELECT count(n) FROM News n")
